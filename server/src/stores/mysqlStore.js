@@ -65,10 +65,10 @@ function normalizeAssetHistory(row) {
 }
 
 const historyLimits = {
-  '1D': { days: 1, bucketSeconds: 15 * 60, limit: 96 },
-  '1W': { days: 7, bucketSeconds: 60 * 60, limit: 168 },
-  '1M': { days: 31, bucketSeconds: 3 * 60 * 60, limit: 248 },
-  '1Y': { days: 365, bucketSeconds: 30 * 24 * 60 * 60, limit: 13 },
+  '1H': { hours: 1, bucketSeconds: 15 * 60, limit: 24 },
+  '1D': { hours: 24, bucketSeconds: 60 * 60, limit: 24 },
+  '1W': { hours: 24 * 7, bucketSeconds: 7 * 60 * 60, limit: 24 },
+  '1M': { hours: 24 * 31, bucketSeconds: 31 * 60 * 60, limit: 24 },
 };
 
 export function createMysqlStore(pool) {
@@ -242,13 +242,13 @@ export function createMysqlStore(pool) {
              MIN(recorded_at) AS recorded_at
            FROM stock_price_history
            WHERE stock_code = ?
-             AND recorded_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             AND recorded_at >= DATE_SUB(NOW(), INTERVAL ${config.hours} HOUR)
            GROUP BY stock_code, stock_name, sector, UNIX_TIMESTAMP(recorded_at) DIV ?
            ORDER BY recorded_at DESC
            LIMIT ${config.limit}
          ) AS compressed_history
          ORDER BY recorded_at ASC`,
-        [code, config.days, config.bucketSeconds],
+        [code, config.bucketSeconds],
       );
       return rows.map(normalizePriceHistory);
     },

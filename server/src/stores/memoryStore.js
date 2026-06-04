@@ -60,10 +60,10 @@ function normalizeAssetHistory(item) {
 }
 
 const historyLimits = {
-  '1D': 96,
-  '1W': 168,
-  '1M': 248,
-  '1Y': 13,
+  '1H': 24,
+  '1D': 24,
+  '1W': 24,
+  '1M': 24,
 };
 
 export function createMemoryStore() {

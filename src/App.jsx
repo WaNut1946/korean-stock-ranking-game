@@ -18,10 +18,10 @@ const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
 const BRAND_SHORT = '모의투자 시뮬레이터';
 
 const PERIODS = [
-  { key: '1D', label: '1일', points: 8, stepMs: 15 * 60 * 1000 },
-  { key: '1W', label: '1주', points: 7, stepMs: 24 * 60 * 60 * 1000 },
-  { key: '1M', label: '1월', points: 10, stepMs: 3 * 60 * 60 * 1000 },
-  { key: '1Y', label: '1년', points: 12, stepMs: 30 * 24 * 60 * 60 * 1000 },
+  { key: '1H', label: '1시간', points: 24, stepMs: 2.5 * 60 * 1000, drift: 0.004 },
+  { key: '1D', label: '1일', points: 24, stepMs: 60 * 60 * 1000, drift: 0.018 },
+  { key: '1W', label: '1주', points: 24, stepMs: 7 * 60 * 60 * 1000, drift: 0.045 },
+  { key: '1M', label: '1달', points: 24, stepMs: 31 * 60 * 60 * 1000, drift: 0.09 },
 ];
 
 function useAuth() {
@@ -167,7 +167,7 @@ function buildChartPoints(stock, period) {
 
   return Array.from({ length: count }, (_, index) => {
     const progress = index / Math.max(count - 1, 1);
-    const drift = period === '1D' ? 0.012 : period === '1W' ? 0.028 : period === '1M' ? 0.07 : 0.18;
+    const drift = periodConfig.drift;
     const wave = Math.sin(index * 1.17 + seed * 0.001) * price * 0.025;
     return {
       price: Math.max(100, price * (1 - drift + progress * drift) + wave),
@@ -400,7 +400,7 @@ function Dashboard({ logout }) {
   const [query, setQuery] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedCode, setSelectedCode] = useState('');
-  const [period, setPeriod] = useState('1M');
+  const [period, setPeriod] = useState('1D');
   const [priceHistory, setPriceHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [loadError, setLoadError] = useState('');
