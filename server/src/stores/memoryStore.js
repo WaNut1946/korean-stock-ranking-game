@@ -169,6 +169,24 @@ export function createMemoryStore() {
       return users.find((user) => user.id === Number(id)) || null;
     },
 
+    async deleteUser(userId) {
+      const numericUserId = Number(userId);
+      const user = users.find((item) => item.id === numericUserId);
+      if (user) {
+        users.splice(users.indexOf(user), 1);
+      }
+
+      for (let index = holdings.length - 1; index >= 0; index -= 1) {
+        if (holdings[index].user_id === numericUserId) holdings.splice(index, 1);
+      }
+      for (let index = trades.length - 1; index >= 0; index -= 1) {
+        if (trades[index].user_id === numericUserId) trades.splice(index, 1);
+      }
+      for (let index = assetHistory.length - 1; index >= 0; index -= 1) {
+        if (Number(assetHistory[index].userId) === numericUserId) assetHistory.splice(index, 1);
+      }
+    },
+
     async getAllUserIds() {
       return users.map((user) => user.id);
     },

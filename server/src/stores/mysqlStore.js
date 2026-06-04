@@ -262,6 +262,10 @@ export function createMysqlStore(pool) {
       return normalizeUser(rows[0]);
     },
 
+    async deleteUser(userId) {
+      await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
+    },
+
     async getAllUserIds() {
       const [rows] = await pool.execute('SELECT id FROM users');
       return rows.map((row) => row.id);

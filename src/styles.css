@@ -632,6 +632,25 @@ input {
   box-shadow: 0 8px 18px rgba(220, 38, 38, 0.2);
 }
 
+.danger-button {
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(220, 38, 38, 0.2);
+}
+
+.danger-button:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.danger-icon {
+  color: #b42318;
+}
+
+.danger-icon:hover:not(:disabled) {
+  border-color: #ffc9c4;
+  background: #fff1ef;
+}
+
 .panel {
   min-width: 0;
   padding: 18px;
@@ -1381,6 +1400,26 @@ input {
 
 .signup-notice-body li::marker {
   color: #1f6f8b;
+}
+
+.account-delete-warning {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #ffc9c4;
+  border-radius: 6px;
+  background: #fff1ef;
+  color: #912018;
+  padding: 12px;
+}
+
+.account-delete-warning strong {
+  color: #b42318;
+}
+
+.account-delete-warning p {
+  margin: 0;
+  color: #912018;
+  line-height: 1.55;
 }
 
 .modal-actions {

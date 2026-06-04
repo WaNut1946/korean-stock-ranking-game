@@ -391,6 +391,25 @@ app.post('/auth/login', async (req, res, next) => {
   }
 });
 
+app.delete('/auth/me', requireAuth, requireActiveUser, async (req, res, next) => {
+  try {
+    const password = String(req.body.password || '');
+
+    if (!password) {
+      return res.status(400).json({ message: '비밀번호를 입력해 주세요.' });
+    }
+
+    if (!(await bcrypt.compare(password, req.activeUser.password_hash))) {
+      return res.status(401).json({ message: '비밀번호가 올바르지 않습니다.' });
+    }
+
+    await store.deleteUser(req.activeUser.id);
+    return res.json({ message: '회원탈퇴가 완료되었습니다.' });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.get('/stocks', async (req, res, next) => {
   try {
     const keyword = String(req.query.q || '').trim().toLowerCase();

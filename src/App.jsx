@@ -12,6 +12,7 @@ import {
   Search,
   ShieldCheck,
   Trophy,
+  Trash2,
   Users,
   Wallet,
   X,
@@ -442,6 +443,64 @@ function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading })
   );
 }
 
+function AccountDeleteModal({ open, onCancel, onConfirm, loading, error }) {
+  const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setPassword('');
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal account-delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">Account</p>
+            <h2 id="delete-account-title">회원탈퇴 확인</h2>
+          </div>
+          <button className="icon-button subtle" onClick={onCancel} title="닫기" disabled={loading}>
+            <X size={19} />
+          </button>
+        </div>
+
+        <div className="account-delete-warning">
+          <strong>탈퇴하면 계정과 모든 모의투자 기록이 삭제됩니다.</strong>
+          <p>
+            현금, 보유 종목, 거래 내역, 자산 기록, 랭킹 기록이 함께 삭제되며 복구할 수 없습니다.
+            계속하려면 비밀번호를 입력해 주세요.
+          </p>
+        </div>
+
+        <label>
+          비밀번호 확인
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoFocus
+            disabled={loading}
+          />
+        </label>
+
+        {error && <p className="error">{error}</p>}
+
+        <div className="modal-actions">
+          <button className="secondary-button" onClick={onCancel} disabled={loading}>
+            취소
+          </button>
+          <button className="danger-button" onClick={() => onConfirm(password)} disabled={loading || !password}>
+            {loading ? '탈퇴 처리 중' : '회원탈퇴'}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function Dashboard({ logout }) {
   const [portfolio, setPortfolio] = useState(null);
   const [stocks, setStocks] = useState([]);
@@ -459,6 +518,9 @@ function Dashboard({ logout }) {
   const [loadError, setLoadError] = useState('');
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(
     () => localStorage.getItem('welcomeGuideDismissed') !== 'true',
   );
@@ -585,6 +647,32 @@ function Dashboard({ logout }) {
     }
   };
 
+  const closeDeleteModal = () => {
+    if (deleteLoading) return;
+    setDeleteModalOpen(false);
+    setDeleteError('');
+  };
+
+  const confirmDeleteAccount = async (password) => {
+    setDeleteLoading(true);
+    setDeleteError('');
+
+    try {
+      await api.delete('/auth/me', { data: { password } });
+      alert('회원탈퇴가 완료되었습니다.');
+      logout();
+    } catch (error) {
+      if (error.response?.status === 401 && !error.response?.data?.message) {
+        logout();
+        return;
+      }
+
+      setDeleteError(error.response?.data?.message || '회원탈퇴를 처리하지 못했습니다.');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   if (!portfolio) {
     return <main className="loading">{loadError || '불러오는 중'}</main>;
   }
@@ -633,6 +721,9 @@ function Dashboard({ logout }) {
               <ShieldCheck size={19} />
             </Link>
           )}
+          <button className="icon-button danger-icon" onClick={() => setDeleteModalOpen(true)} title="회원탈퇴">
+            <Trash2 size={18} />
+          </button>
           <button className="icon-button" onClick={logout} title="로그아웃">
             <LogOut size={19} />
           </button>
@@ -895,6 +986,13 @@ function Dashboard({ logout }) {
         onCancel={() => setPendingOrder(null)}
         onConfirm={confirmTrade}
         loading={tradeLoading}
+      />
+      <AccountDeleteModal
+        open={deleteModalOpen}
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDeleteAccount}
+        loading={deleteLoading}
+        error={deleteError}
       />
     </main>
   );
