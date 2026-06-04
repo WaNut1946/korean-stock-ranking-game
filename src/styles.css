@@ -887,6 +887,139 @@ input {
   color: #475467;
 }
 
+.nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.admin-shell {
+  gap: 18px;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-stat-card {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 112px;
+  border: 1px solid #d9e0e6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: 0 12px 28px rgba(23, 32, 51, 0.06);
+}
+
+.admin-stat-card span,
+.admin-status-list span {
+  display: block;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.admin-stat-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #172033;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.admin-stat-card small {
+  display: block;
+  margin-top: 7px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.admin-stat-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 8px;
+  background: #edf8fc;
+  color: #1f6f8b;
+}
+
+.admin-stat-card.green .admin-stat-icon {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.admin-stat-card.yellow .admin-stat-icon {
+  background: #fff8e6;
+  color: #8b5e00;
+}
+
+.admin-two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  gap: 14px;
+}
+
+.admin-status-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-status-list div {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.55fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  border-bottom: 1px solid #eef2f6;
+}
+
+.admin-status-list strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-failed-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.admin-failed-list span {
+  border: 1px solid #ffc9c4;
+  border-radius: 999px;
+  background: #fff1ef;
+  color: #b42318;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-message {
+  display: grid;
+  gap: 8px;
+  color: #475467;
+  font-weight: 800;
+}
+
 .notice,
 .error {
   border-radius: 6px;
@@ -1096,6 +1229,14 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .admin-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-two-column {
+    grid-template-columns: 1fr;
+  }
+
   .panel-heading {
     align-items: stretch;
     flex-direction: column;
@@ -1130,6 +1271,17 @@ input {
 @media (max-width: 560px) {
   .app-shell {
     padding: 14px;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-status-list div {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 4px;
+    padding-bottom: 8px;
   }
 
   .auth-panel {

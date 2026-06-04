@@ -4,10 +4,15 @@ import {
   ArrowDownUp,
   ChartNoAxesCombined,
   Clock3,
+  Database,
+  Home,
   Lock,
   LogOut,
+  RefreshCw,
   Search,
+  ShieldCheck,
   Trophy,
+  Users,
   Wallet,
   X,
 } from 'lucide-react';
@@ -557,6 +562,9 @@ function Dashboard({ logout }) {
           <span className={`status ${marketOpen ? 'open' : 'closed'}`}>
             {portfolio.marketStatus?.label || '조회 전용'}
           </span>
+          <Link className="icon-button" to="/admin" title="관리자">
+            <ShieldCheck size={19} />
+          </Link>
           <button className="icon-button" onClick={logout} title="로그아웃">
             <LogOut size={19} />
           </button>
@@ -808,6 +816,176 @@ function Dashboard({ logout }) {
   );
 }
 
+function formatUptime(seconds) {
+  const safeSeconds = Math.max(Number(seconds || 0), 0);
+  const days = Math.floor(safeSeconds / 86400);
+  const hours = Math.floor((safeSeconds % 86400) / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+
+  if (days > 0) return `${days}일 ${hours}시간`;
+  if (hours > 0) return `${hours}시간 ${minutes}분`;
+  return `${minutes}분`;
+}
+
+function AdminStatCard({ icon, label, value, detail, tone = 'blue' }) {
+  return (
+    <section className={`admin-stat-card ${tone}`}>
+      <div className="admin-stat-icon">{icon}</div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        {detail && <small>{detail}</small>}
+      </div>
+    </section>
+  );
+}
+
+function AdminPage({ logout }) {
+  const [status, setStatus] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const loadStatus = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data } = await api.get('/admin/status');
+      setStatus(data);
+    } catch (requestError) {
+      if (requestError.response?.status === 401) {
+        logout();
+        return;
+      }
+
+      setError(requestError.response?.data?.message || '관리자 상태를 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStatus();
+  }, []);
+
+  const stats = status?.stats || {};
+  const priceRefresh = status?.priceRefresh || {};
+  const marketStatus = status?.marketStatus || {};
+  const server = status?.server || {};
+  const failedCount = Number(priceRefresh.failedCount || 0);
+
+  return (
+    <main className="app-shell admin-shell">
+      <nav className="topbar">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            <ShieldCheck size={27} />
+          </span>
+          <span>
+            <p className="eyebrow">Admin Console</p>
+            <h1>운영 상태</h1>
+          </span>
+        </div>
+        <div className="topbar-actions">
+          <Link className="secondary-button nav-button" to="/">
+            <Home size={17} />
+            대시보드
+          </Link>
+          <button className="icon-button" onClick={logout} title="로그아웃">
+            <LogOut size={19} />
+          </button>
+        </div>
+      </nav>
+
+      {loading && <section className="panel admin-message">운영 상태를 불러오는 중입니다.</section>}
+
+      {!loading && error && (
+        <section className="panel admin-message error">
+          <strong>{error}</strong>
+          <span>관리자 이메일 설정과 현재 로그인 계정을 확인해 주세요.</span>
+        </section>
+      )}
+
+      {!loading && !error && status && (
+        <>
+          <section className="admin-grid">
+            <AdminStatCard icon={<Users size={21} />} label="전체 유저" value={`${stats.userCount || 0}명`} />
+            <AdminStatCard icon={<Wallet size={21} />} label="보유 종목" value={`${stats.holdingCount || 0}건`} />
+            <AdminStatCard icon={<ArrowDownUp size={21} />} label="전체 거래" value={`${stats.tradeCount || 0}건`} detail={`최근 ${formatDateTime(stats.latestTradeAt)}`} tone="green" />
+            <AdminStatCard icon={<Database size={21} />} label="가격 기록" value={`${stats.stockHistoryCount || 0}건`} detail={`최근 ${formatDateTime(stats.latestStockHistoryAt)}`} tone="yellow" />
+          </section>
+
+          <section className="admin-two-column">
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>가격 API</h2>
+                <button className="secondary-button nav-button" onClick={loadStatus}>
+                  <RefreshCw size={17} />
+                  새로고침
+                </button>
+              </div>
+              <div className="admin-status-list">
+                <div>
+                  <span>Provider</span>
+                  <strong>{priceRefresh.provider || '-'}</strong>
+                </div>
+                <div>
+                  <span>갱신 주기</span>
+                  <strong>{priceRefresh.intervalMinutes || 15}분</strong>
+                </div>
+                <div>
+                  <span>마지막 성공</span>
+                  <strong>{formatDateTime(priceRefresh.lastSuccessAt)}</strong>
+                </div>
+                <div>
+                  <span>성공 / 실패</span>
+                  <strong>
+                    {priceRefresh.successfulCount || 0} / {failedCount}
+                  </strong>
+                </div>
+              </div>
+              {failedCount > 0 && (
+                <div className="admin-failed-list">
+                  {(priceRefresh.failedStocks || []).slice(0, 10).map((stock) => (
+                    <span key={stock.code || stock.name}>{stock.name || stock.code}</span>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>서버</h2>
+                <span className={`status ${marketStatus.canTrade ? 'open' : 'closed'}`}>
+                  {marketStatus.label || '조회 전용'}
+                </span>
+              </div>
+              <div className="admin-status-list">
+                <div>
+                  <span>환경</span>
+                  <strong>{server.environment || '-'}</strong>
+                </div>
+                <div>
+                  <span>시작 시간</span>
+                  <strong>{formatDateTime(server.startedAt)}</strong>
+                </div>
+                <div>
+                  <span>실행 시간</span>
+                  <strong>{formatUptime(server.uptimeSeconds)}</strong>
+                </div>
+                <div>
+                  <span>현재 상태</span>
+                  <strong>{marketStatus.canTrade ? '거래 가능' : '조회 전용'}</strong>
+                </div>
+              </div>
+            </section>
+          </section>
+        </>
+      )}
+    </main>
+  );
+}
+
 export default function App() {
   const auth = useAuth();
 
@@ -815,6 +993,10 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<AuthPage mode="login" saveSession={auth.saveSession} />} />
       <Route path="/register" element={<AuthPage mode="register" saveSession={auth.saveSession} />} />
+      <Route
+        path="/admin"
+        element={auth.user ? <AdminPage logout={auth.logout} /> : <Navigate to="/login" replace />}
+      />
       <Route
         path="/"
         element={auth.user ? <Dashboard logout={auth.logout} /> : <Navigate to="/login" replace />}
