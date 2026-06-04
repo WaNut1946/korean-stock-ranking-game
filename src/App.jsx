@@ -94,13 +94,14 @@ function AuthPage({ mode, saveSession }) {
         </div>
 
         <div className="auth-disclaimer" role="note">
-          <strong>서비스 안내</strong>
+          <strong>서비스 안내와 주의사항</strong>
           <ul>
             <li>실제 돈이 아닌 가상 자산으로 진행되는 모의투자 게임입니다.</li>
-            <li>주가는 한국투자증권 API 기준으로 약 15분마다 갱신됩니다.</li>
-            <li>매수/매도는 평일 09:00~15:30에만 가능합니다.</li>
-            <li>본 서비스는 비영리 학습 및 포트폴리오 목적으로만 운영됩니다.</li>
-            <li>제공 정보는 투자 권유나 수익 보장을 의미하지 않습니다.</li>
+            <li>매수/매도는 평일 09:00~15:30에만 가능하며, 그 외 시간에는 조회만 가능합니다.</li>
+            <li>주가는 한국투자증권 API 기준으로 장중 약 15분마다 갱신되며, 종가 반영을 위해 15:45까지 갱신될 수 있습니다.</li>
+            <li>차트는 실제 갱신 기록이 쌓인 뒤 표시됩니다. 초기에는 차트가 비어 보일 수 있습니다.</li>
+            <li>본 서비스는 비영리 학습 및 포트폴리오 목적으로만 운영되며, 투자 권유나 수익 보장을 의미하지 않습니다.</li>
+            <li>이용해 주셔서 감사합니다. 안전하고 즐거운 모의투자 경험을 만들기 위해 계속 개선하겠습니다.</li>
           </ul>
         </div>
 
@@ -235,7 +236,11 @@ function StockChart({ stock, period, setPeriod, history }) {
         </svg>
         {!hasEnoughHistory && (
           <div className="chart-empty">
-            실제 가격 기록이 더 쌓이면 차트가 표시됩니다.
+            <strong>차트 데이터를 쌓는 중입니다.</strong>
+            <span>
+              장중 가격 갱신이 2회 이상 기록되면 차트가 표시됩니다. 가격 기록은 평일 09:00~15:45에
+              약 15분 간격으로 저장됩니다.
+            </span>
           </div>
         )}
         {hoveredPoint && (
@@ -400,6 +405,9 @@ function Dashboard({ logout }) {
   const [loadError, setLoadError] = useState('');
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(
+    () => localStorage.getItem('welcomeGuideDismissed') !== 'true',
+  );
 
   const selectedStock = useMemo(
     () => stocks.find((stock) => stock.code === selectedCode) || stocks[0],
@@ -535,6 +543,10 @@ function Dashboard({ logout }) {
   const maxSellQuantity = selectedHolding?.quantity || 0;
   const setPresetQuantity = (value) => setQuantity(Math.max(1, Number(value || 1)));
   const addQuantity = (amount) => setPresetQuantity(Number(quantity || 0) + amount);
+  const closeWelcomeGuide = () => {
+    localStorage.setItem('welcomeGuideDismissed', 'true');
+    setShowWelcomeGuide(false);
+  };
   const priceRefresh = portfolio.priceRefresh || {};
   const priceRefreshLabel = `${getProviderLabel(priceRefresh.provider)} · ${priceRefresh.intervalMinutes || 15}분 갱신`;
   const lastPriceRefreshAt = priceRefresh.lastSuccessAt || priceRefresh.priceUpdatedAt || portfolio.priceUpdatedAt;
@@ -596,6 +608,22 @@ function Dashboard({ logout }) {
       </section>
 
       <AssetHistoryChart history={assetHistory} totalAsset={portfolio.summary.totalAsset} />
+
+      {showWelcomeGuide && (
+        <div className="notice welcome-guide">
+          <div>
+            <strong>모의투자를 시작하기 전에 확인해 주세요.</strong>
+            <p>
+              매수와 매도는 평일 09:00~15:30에만 가능하며, 장외 시간에는 조회만 가능합니다.
+              차트는 실제 가격 기록이 쌓인 뒤 표시됩니다. 본 서비스는 학습용 모의투자이며 투자 권유가 아닙니다.
+              이용해 주셔서 감사합니다.
+            </p>
+          </div>
+          <button className="notice-close" onClick={closeWelcomeGuide} title="안내 닫기">
+            <X size={17} />
+          </button>
+        </div>
+      )}
 
       {message && (
         <div className="notice dismissible-notice">

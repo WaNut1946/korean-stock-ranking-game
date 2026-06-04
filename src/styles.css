@@ -500,11 +500,27 @@ input {
   position: absolute;
   inset: 0;
   display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
   place-items: center;
   color: #667085;
   font-size: 14px;
   font-weight: 800;
+  padding: 24px;
   text-align: center;
+}
+
+.chart-empty strong {
+  color: #172033;
+  font-size: 16px;
+}
+
+.chart-empty span {
+  max-width: 430px;
+  color: #667085;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .period-tabs {
@@ -1164,6 +1180,26 @@ input {
   font-weight: 800;
 }
 
+.welcome-guide {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.welcome-guide strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #174f67;
+}
+
+.welcome-guide p {
+  margin: 0;
+  color: #475467;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .dismissible-notice {
   display: flex;
   align-items: center;
@@ -1397,6 +1433,14 @@ input {
 @media (max-width: 560px) {
   .app-shell {
     padding: 14px;
+  }
+
+  .welcome-guide {
+    flex-direction: column;
+  }
+
+  .welcome-guide .notice-close {
+    align-self: flex-end;
   }
 
   .admin-grid {
