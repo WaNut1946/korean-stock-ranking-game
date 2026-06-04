@@ -61,6 +61,7 @@ async function buildStore() {
 
 const store = await buildStore();
 const priceProvider = createPriceProvider();
+console.log(`Using ${priceProvider.name} price provider.`);
 const supportedStocks = await priceProvider.getSupportedStocks();
 await store.ensureStockPrices(supportedStocks);
 
@@ -78,6 +79,7 @@ async function refreshPrices() {
 }
 
 setInterval(refreshPrices, 15 * 60 * 1000);
+setTimeout(refreshPrices, 1000);
 
 function getMarketStatusForClient() {
   const status = getKoreanMarketStatus();
