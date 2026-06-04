@@ -170,6 +170,28 @@ export function createMemoryStore() {
       return users.map((user) => user.id);
     },
 
+    async getAdminStats() {
+      const latestTrade = trades.reduce(
+        (latest, trade) => (new Date(trade.created_at) > new Date(latest || 0) ? trade.created_at : latest),
+        null,
+      );
+      const latestStockHistory = [...stockPriceHistory.values()]
+        .flat()
+        .reduce(
+          (latest, item) => (new Date(item.recordedAt) > new Date(latest || 0) ? item.recordedAt : latest),
+          null,
+        );
+
+      return {
+        userCount: users.length,
+        holdingCount: holdings.length,
+        tradeCount: trades.length,
+        latestTradeAt: latestTrade,
+        stockHistoryCount: [...stockPriceHistory.values()].reduce((sum, rows) => sum + rows.length, 0),
+        latestStockHistoryAt: latestStockHistory,
+      };
+    },
+
     async getHoldings(userId) {
       return holdings.filter((holding) => holding.user_id === Number(userId));
     },

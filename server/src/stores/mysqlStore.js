@@ -264,6 +264,26 @@ export function createMysqlStore(pool) {
       return rows.map((row) => row.id);
     },
 
+    async getAdminStats() {
+      const [[userStats]] = await pool.execute('SELECT COUNT(*) AS user_count FROM users');
+      const [[holdingStats]] = await pool.execute('SELECT COUNT(*) AS holding_count FROM holdings');
+      const [[tradeStats]] = await pool.execute(
+        'SELECT COUNT(*) AS trade_count, MAX(created_at) AS latest_trade_at FROM trades',
+      );
+      const [[stockHistoryStats]] = await pool.execute(
+        'SELECT COUNT(*) AS stock_history_count, MAX(recorded_at) AS latest_stock_history_at FROM stock_price_history',
+      );
+
+      return {
+        userCount: Number(userStats.user_count || 0),
+        holdingCount: Number(holdingStats.holding_count || 0),
+        tradeCount: Number(tradeStats.trade_count || 0),
+        latestTradeAt: tradeStats.latest_trade_at,
+        stockHistoryCount: Number(stockHistoryStats.stock_history_count || 0),
+        latestStockHistoryAt: stockHistoryStats.latest_stock_history_at,
+      };
+    },
+
     async getHoldings(userId) {
       const [rows] = await pool.execute('SELECT * FROM holdings WHERE user_id = ? ORDER BY stock_name', [userId]);
       return rows.map(normalizeHolding);

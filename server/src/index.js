@@ -16,6 +16,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 const allowAfterHoursTrading = process.env.ALLOW_AFTER_HOURS_TRADING === 'true';
 const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-me';
 const priceRefreshIntervalMinutes = 15;
+const serverStartedAt = new Date();
+const adminEmails = new Set(
+  String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 function validateRuntimeConfig() {
   if (!isProduction) return;
@@ -172,6 +179,18 @@ async function requireActiveUser(req, res, next) {
   } catch (error) {
     return next(error);
   }
+}
+
+function requireAdmin(req, res, next) {
+  if (adminEmails.size === 0) {
+    return res.status(403).json({ message: '관리자 이메일이 설정되어 있지 않습니다.' });
+  }
+
+  if (!adminEmails.has(String(req.activeUser.email || '').toLowerCase())) {
+    return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
+  }
+
+  return next();
 }
 
 async function parseTradeBody(req, res) {
@@ -457,6 +476,25 @@ app.get('/asset-history', requireAuth, requireActiveUser, async (req, res, next)
     }
 
     return res.json({ history });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/admin/status', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
+  try {
+    const stats = await store.getAdminStats();
+
+    return res.json({
+      stats,
+      priceRefresh: getPriceRefreshStatusForClient(),
+      marketStatus: getMarketStatusForClient(),
+      server: {
+        environment: process.env.NODE_ENV || 'development',
+        startedAt: serverStartedAt,
+        uptimeSeconds: Math.floor(process.uptime()),
+      },
+    });
   } catch (error) {
     return next(error);
   }
