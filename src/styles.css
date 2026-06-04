@@ -902,6 +902,18 @@ input {
   font-weight: 800;
 }
 
+.stock-list-item small.kr-up {
+  color: #c01f28;
+}
+
+.stock-list-item small.kr-down {
+  color: #175cd3;
+}
+
+.stock-list-item small.neutral {
+  color: #667085;
+}
+
 .trade-buy,
 .trade-sell {
   font-weight: 900;
