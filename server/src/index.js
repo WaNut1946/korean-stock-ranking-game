@@ -130,6 +130,10 @@ function getPriceRefreshStatusForClient(priceUpdatedAt = null) {
   };
 }
 
+function isAdminUser(user) {
+  return adminEmails.has(String(user?.email || '').toLowerCase());
+}
+
 function toPublicUser(user) {
   return {
     id: user.id,
@@ -186,7 +190,7 @@ function requireAdmin(req, res, next) {
     return res.status(403).json({ message: '관리자 이메일이 설정되어 있지 않습니다.' });
   }
 
-  if (!adminEmails.has(String(req.activeUser.email || '').toLowerCase())) {
+  if (!isAdminUser(req.activeUser)) {
     return res.status(403).json({ message: '관리자만 접근할 수 있습니다.' });
   }
 
@@ -261,6 +265,7 @@ async function enrichPortfolio(portfolio) {
     holdings,
     marketStatus: getMarketStatusForClient(),
     priceUpdatedAt,
+    isAdmin: isAdminUser(portfolio.user),
   };
 
   return {

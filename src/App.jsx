@@ -562,9 +562,11 @@ function Dashboard({ logout }) {
           <span className={`status ${marketOpen ? 'open' : 'closed'}`}>
             {portfolio.marketStatus?.label || '조회 전용'}
           </span>
-          <Link className="icon-button" to="/admin" title="관리자">
-            <ShieldCheck size={19} />
-          </Link>
+          {portfolio.isAdmin && (
+            <Link className="icon-button" to="/admin" title="관리자">
+              <ShieldCheck size={19} />
+            </Link>
+          )}
           <button className="icon-button" onClick={logout} title="로그아웃">
             <LogOut size={19} />
           </button>
