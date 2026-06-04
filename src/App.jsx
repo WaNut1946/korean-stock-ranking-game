@@ -939,8 +939,20 @@ function AdminPage({ logout }) {
                   <strong>{priceRefresh.intervalMinutes || 15}분</strong>
                 </div>
                 <div>
+                  <span>갱신 허용</span>
+                  <strong>{priceRefresh.refreshWindowLabel || '평일 09:00 ~ 15:45'}</strong>
+                </div>
+                <div>
+                  <span>현재 갱신 상태</span>
+                  <strong>{priceRefresh.refreshWindowStatusLabel || '-'}</strong>
+                </div>
+                <div>
                   <span>마지막 성공</span>
                   <strong>{formatDateTime(priceRefresh.lastSuccessAt)}</strong>
+                </div>
+                <div>
+                  <span>마지막 생략</span>
+                  <strong>{formatDateTime(priceRefresh.lastSkippedAt)}</strong>
                 </div>
                 <div>
                   <span>성공 / 실패</span>
@@ -1034,7 +1046,15 @@ function AdminPage({ logout }) {
               <div className="admin-log-list">
                 {priceRefreshLogs.map((log) => (
                   <div className={`admin-log-item ${log.status}`} key={log.id}>
-                    <strong>{log.status === 'success' ? '성공' : log.status === 'partial' ? '일부 실패' : '실패'}</strong>
+                    <strong>
+                      {log.status === 'success'
+                        ? '성공'
+                        : log.status === 'partial'
+                          ? '일부 실패'
+                          : log.status === 'skipped'
+                            ? '생략'
+                            : '실패'}
+                    </strong>
                     <span>{formatDateTime(log.createdAt)}</span>
                     <small>
                       성공 {log.successfulCount || 0} · 실패 {log.failedCount || 0}

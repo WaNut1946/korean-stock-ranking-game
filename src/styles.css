@@ -1117,6 +1117,10 @@ input {
   border-left-color: #b54708;
 }
 
+.admin-log-item.skipped {
+  border-left-color: #667085;
+}
+
 .admin-log-item.failed {
   border-left-color: #b42318;
 }

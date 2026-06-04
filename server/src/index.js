@@ -5,7 +5,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { signToken, requireAuth } from './auth.js';
 import { createPool } from './db.js';
-import { getKoreanMarketStatus } from './marketTime.js';
+import { getKoreanMarketStatus, getKoreanPriceRefreshStatus } from './marketTime.js';
 import { createPriceProvider } from './priceProviders/index.js';
 import { createMemoryStore } from './stores/memoryStore.js';
 import { createMysqlStore } from './stores/mysqlStore.js';
@@ -79,6 +79,8 @@ const priceRefreshStatus = {
   lastSuccessAt: null,
   lastFailureAt: null,
   lastError: null,
+  lastSkippedAt: null,
+  skipReason: null,
   successfulCount: 0,
   failedCount: 0,
   failedStocks: [],
@@ -97,6 +99,21 @@ function addPriceRefreshLog(entry) {
 
 async function refreshPrices() {
   let currentStocks = [];
+  const refreshWindow = getKoreanPriceRefreshStatus();
+
+  if (!refreshWindow.canRefresh) {
+    priceRefreshStatus.lastSkippedAt = new Date().toISOString();
+    priceRefreshStatus.skipReason = refreshWindow.label;
+    console.log(`Stock price refresh skipped: ${refreshWindow.label} (${refreshWindow.windowLabel})`);
+    addPriceRefreshLog({
+      status: 'skipped',
+      successfulCount: 0,
+      failedCount: 0,
+      failedStocks: [],
+      message: `${refreshWindow.label}: ${refreshWindow.windowLabel}`,
+    });
+    return;
+  }
 
   try {
     currentStocks = await store.getStocks();
@@ -109,6 +126,8 @@ async function refreshPrices() {
     priceRefreshStatus.successfulCount = Number(stats.successfulCount || latestPrices.length);
     priceRefreshStatus.failedCount = Number(stats.failedCount || 0);
     priceRefreshStatus.failedStocks = stats.failedStocks || [];
+    priceRefreshStatus.lastSkippedAt = null;
+    priceRefreshStatus.skipReason = null;
     priceRefreshStatus.lastError = priceRefreshStatus.failedCount
       ? `${priceRefreshStatus.failedCount}개 종목은 이전 가격을 유지했습니다.`
       : null;
@@ -151,9 +170,14 @@ function getMarketStatusForClient() {
 }
 
 function getPriceRefreshStatusForClient(priceUpdatedAt = null) {
+  const refreshWindow = getKoreanPriceRefreshStatus();
+
   return {
     ...priceRefreshStatus,
     priceUpdatedAt,
+    canRefreshNow: refreshWindow.canRefresh,
+    refreshWindowLabel: refreshWindow.windowLabel,
+    refreshWindowStatusLabel: refreshWindow.label,
   };
 }
 
