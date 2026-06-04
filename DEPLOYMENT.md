@@ -178,3 +178,19 @@ https://your-domain.com
 ## 10. 다음 단계
 
 배포가 끝난 뒤 실제 주가 API를 붙일 때는 `server/src/priceProviders`에 새 provider를 추가하고 `.env`의 `PRICE_PROVIDER`를 변경합니다.
+
+한국투자증권 KIS Developers를 사용할 때는 `.env`에 아래 값을 추가합니다.
+
+```env
+PRICE_PROVIDER=kis
+KIS_BASE_URL=https://openapi.koreainvestment.com:9443
+KIS_APP_KEY=한국투자증권_APP_KEY
+KIS_APP_SECRET=한국투자증권_APP_SECRET
+```
+
+키를 바꾼 뒤에는 서버에서 아래 순서로 반영합니다.
+
+```bash
+pm2 restart stock-ranking-api --update-env
+curl https://anttradersim.com/health
+```
