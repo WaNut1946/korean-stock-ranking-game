@@ -14,6 +14,9 @@ import {
 import { api } from './api.js';
 import { formatDateTime, formatPercent, formatWon } from './format.js';
 
+const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
+const BRAND_SHORT = '모의투자 시뮬레이터';
+
 const PERIODS = [
   { key: '1D', label: '1일', points: 8 },
   { key: '1W', label: '1주', points: 7 },
@@ -71,7 +74,15 @@ function AuthPage({ mode, saveSession }) {
     <main className="auth-shell">
       <section className="auth-panel">
         <div>
-          <p className="eyebrow">KRX Mock League</p>
+          <div className="brand-lockup">
+            <span className="brand-mark" aria-hidden="true">
+              <ChartNoAxesCombined size={25} />
+            </span>
+            <span>
+              <p className="eyebrow">Korean Stock Simulator</p>
+              <strong>{BRAND_NAME}</strong>
+            </span>
+          </div>
           <h1>{isRegister ? '회원가입' : '로그인'}</h1>
           <p className="muted">가상 1억 원으로 한국 주식 포트폴리오를 키워보세요.</p>
         </div>
@@ -467,9 +478,14 @@ function Dashboard({ logout }) {
   return (
     <main className="app-shell">
       <nav className="topbar">
-        <div>
-          <p className="eyebrow">한국 주식 모의투자</p>
-          <h1>랭킹 게임</h1>
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            <ChartNoAxesCombined size={28} />
+          </span>
+          <span>
+            <p className="eyebrow">Korean Stock Simulator</p>
+            <h1>{BRAND_SHORT}</h1>
+          </span>
         </div>
         <div className="topbar-actions">
           <span className="updated-at">
