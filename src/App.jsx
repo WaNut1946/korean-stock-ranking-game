@@ -18,10 +18,10 @@ const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
 const BRAND_SHORT = '모의투자 시뮬레이터';
 
 const PERIODS = [
-  { key: '1D', label: '1일', points: 8 },
-  { key: '1W', label: '1주', points: 7 },
-  { key: '1M', label: '1월', points: 10 },
-  { key: '1Y', label: '1년', points: 12 },
+  { key: '1D', label: '1일', points: 8, stepMs: 15 * 60 * 1000 },
+  { key: '1W', label: '1주', points: 7, stepMs: 24 * 60 * 60 * 1000 },
+  { key: '1M', label: '1월', points: 10, stepMs: 3 * 24 * 60 * 60 * 1000 },
+  { key: '1Y', label: '1년', points: 12, stepMs: 30 * 24 * 60 * 60 * 1000 },
 ];
 
 function useAuth() {
@@ -159,34 +159,48 @@ function SummaryTile({ icon, label, value, tone }) {
 }
 
 function buildChartPoints(stock, period) {
-  const count = PERIODS.find((item) => item.key === period)?.points || 8;
+  const periodConfig = PERIODS.find((item) => item.key === period) || PERIODS[0];
+  const count = periodConfig.points;
   const seed = Number(stock?.code || 1);
   const price = Number(stock?.price || 10000);
+  const end = Date.now();
 
   return Array.from({ length: count }, (_, index) => {
     const progress = index / Math.max(count - 1, 1);
     const drift = period === '1D' ? 0.012 : period === '1W' ? 0.028 : period === '1M' ? 0.07 : 0.18;
     const wave = Math.sin(index * 1.17 + seed * 0.001) * price * 0.025;
-    return Math.max(100, price * (1 - drift + progress * drift) + wave);
+    return {
+      price: Math.max(100, price * (1 - drift + progress * drift) + wave),
+      recordedAt: new Date(end - (count - index - 1) * periodConfig.stepMs).toISOString(),
+      estimated: true,
+    };
   });
 }
 
 function StockChart({ stock, period, setPeriod, history }) {
-  const values = useMemo(() => {
-    const historyValues = history.map((item) => Number(item.price)).filter((price) => price > 0);
-    return historyValues.length >= 2 ? historyValues : buildChartPoints(stock, period);
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const chartPoints = useMemo(() => {
+    const historyPoints = history
+      .map((item) => ({
+        price: Number(item.price),
+        recordedAt: item.recordedAt,
+        estimated: false,
+      }))
+      .filter((item) => item.price > 0);
+    return historyPoints.length >= 2 ? historyPoints : buildChartPoints(stock, period);
   }, [history, stock, period]);
+  const values = chartPoints.map((item) => item.price);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = Math.max(max - min, 1);
-  const points = values
-    .map((value, index) => {
-      const x = 24 + index * (552 / (values.length - 1));
-      const y = 172 - ((value - min) / range) * 118;
-      return `${x},${y}`;
-    })
-    .join(' ');
+  const plottedPoints = chartPoints.map((item, index) => {
+    const x = 24 + index * (552 / Math.max(chartPoints.length - 1, 1));
+    const y = 172 - ((item.price - min) / range) * 118;
+    return { ...item, x, y };
+  });
+  const points = plottedPoints.map((item) => `${item.x},${item.y}`).join(' ');
   const fillPoints = `24,184 ${points} 576,184`;
+  const activePoint = hoveredPoint ?? plottedPoints.at(-1);
 
   if (!stock) {
     return <section className="panel chart-main">종목을 선택해 주세요.</section>;
@@ -200,26 +214,50 @@ function StockChart({ stock, period, setPeriod, history }) {
           <h2>
             {stock.name} ({stock.code})
           </h2>
-          <p className="muted">15분 갱신 가격 기록</p>
+          <p className="muted">실제 갱신 가격 기록</p>
         </div>
         <strong>{formatWon(stock.price)}</strong>
       </div>
 
-      <svg className="stock-chart" viewBox="0 0 600 210" role="img" aria-label={`${stock.name} 가격 차트`}>
-        <defs>
-          <linearGradient id="stockFill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#1f6f8b" stopOpacity="0.24" />
-            <stop offset="100%" stopColor="#1f6f8b" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        <path className="chart-grid" d="M24 54H576M24 93H576M24 132H576M24 172H576" />
-        <polygon points={fillPoints} fill="url(#stockFill)" />
-        <polyline className="chart-line" points={points} />
-        {points.split(' ').map((point) => {
-          const [cx, cy] = point.split(',');
-          return <circle className="chart-dot" key={point} cx={cx} cy={cy} r="4" />;
-        })}
-      </svg>
+      <div className="chart-canvas">
+        <svg className="stock-chart" viewBox="0 0 600 210" role="img" aria-label={`${stock.name} 가격 차트`}>
+          <defs>
+            <linearGradient id="stockFill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#1f6f8b" stopOpacity="0.24" />
+              <stop offset="100%" stopColor="#1f6f8b" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path className="chart-grid" d="M24 54H576M24 93H576M24 132H576M24 172H576" />
+          <polygon points={fillPoints} fill="url(#stockFill)" />
+          <polyline className="chart-line" points={points} />
+          {plottedPoints.map((point) => (
+            <circle
+              className="chart-dot interactive"
+              key={`${point.recordedAt}-${point.price}`}
+              cx={point.x}
+              cy={point.y}
+              r="5"
+              tabIndex="0"
+              onBlur={() => setHoveredPoint(null)}
+              onFocus={() => setHoveredPoint(point)}
+              onMouseEnter={() => setHoveredPoint(point)}
+              onMouseLeave={() => setHoveredPoint(null)}
+            />
+          ))}
+        </svg>
+        {activePoint && (
+          <div
+            className="chart-tooltip"
+            style={{
+              left: `${(activePoint.x / 600) * 100}%`,
+              top: `${(activePoint.y / 210) * 100}%`,
+            }}
+          >
+            <strong>{formatWon(activePoint.price)}</strong>
+            <span>{formatDateTime(activePoint.recordedAt)}</span>
+          </div>
+        )}
+      </div>
 
       <div className="period-tabs">
         {PERIODS.map((item) => (

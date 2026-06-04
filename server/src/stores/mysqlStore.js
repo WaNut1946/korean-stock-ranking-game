@@ -65,10 +65,10 @@ function normalizeAssetHistory(row) {
 }
 
 const historyLimits = {
-  '1D': 8,
-  '1W': 7,
-  '1M': 10,
-  '1Y': 12,
+  '1D': { days: 1, bucketSeconds: 15 * 60, limit: 96 },
+  '1W': { days: 7, bucketSeconds: 60 * 60, limit: 168 },
+  '1M': { days: 31, bucketSeconds: 6 * 60 * 60, limit: 124 },
+  '1Y': { days: 365, bucketSeconds: 24 * 60 * 60, limit: 365 },
 };
 
 export function createMysqlStore(pool) {
@@ -230,7 +230,7 @@ export function createMysqlStore(pool) {
     },
 
     async getStockPriceHistory(code, period = '1M') {
-      const limit = historyLimits[period] || historyLimits['1M'];
+      const config = historyLimits[period] || historyLimits['1M'];
       const [rows] = await pool.execute(
         `SELECT stock_code, stock_name, sector, price, recorded_at
          FROM (
@@ -242,12 +242,13 @@ export function createMysqlStore(pool) {
              MIN(recorded_at) AS recorded_at
            FROM stock_price_history
            WHERE stock_code = ?
-           GROUP BY stock_code, stock_name, sector, UNIX_TIMESTAMP(recorded_at) DIV 900
+             AND recorded_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+           GROUP BY stock_code, stock_name, sector, UNIX_TIMESTAMP(recorded_at) DIV ?
            ORDER BY recorded_at DESC
-           LIMIT ${limit}
+           LIMIT ${config.limit}
          ) AS compressed_history
          ORDER BY recorded_at ASC`,
-        [code],
+        [code, config.days, config.bucketSeconds],
       );
       return rows.map(normalizePriceHistory);
     },
