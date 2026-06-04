@@ -801,7 +801,8 @@ input {
   font-weight: 800;
 }
 
-.updated-at {
+.updated-at,
+.data-source {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -813,6 +814,12 @@ input {
   padding: 0 12px;
   font-size: 13px;
   font-weight: 800;
+}
+
+.data-source {
+  border-color: #e8d9ad;
+  background: #fff8e6;
+  color: #6f5a13;
 }
 
 .status.open {
@@ -835,6 +842,13 @@ input {
   border: 1px solid #bfd8e6;
   background: #eaf6fb;
   color: #174f67;
+}
+
+.warning-notice {
+  border-color: #f4dca3;
+  background: #fff8e6;
+  color: #6f5a13;
+  font-weight: 800;
 }
 
 .dismissible-notice {

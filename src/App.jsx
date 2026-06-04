@@ -268,6 +268,12 @@ function AssetHistoryChart({ history, totalAsset }) {
   );
 }
 
+function getProviderLabel(provider) {
+  if (provider === 'kis') return '한국투자증권 기준';
+  if (provider === 'mock') return 'Mock 데이터 기준';
+  return '가격 공급자 확인 중';
+}
+
 function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading }) {
   if (!order) return null;
 
@@ -485,6 +491,9 @@ function Dashboard({ logout }) {
   const maxSellQuantity = selectedHolding?.quantity || 0;
   const setPresetQuantity = (value) => setQuantity(Math.max(1, Number(value || 1)));
   const addQuantity = (amount) => setPresetQuantity(Number(quantity || 0) + amount);
+  const priceRefresh = portfolio.priceRefresh || {};
+  const priceRefreshLabel = `${getProviderLabel(priceRefresh.provider)} · ${priceRefresh.intervalMinutes || 15}분 갱신`;
+  const lastPriceRefreshAt = priceRefresh.lastSuccessAt || priceRefresh.priceUpdatedAt || portfolio.priceUpdatedAt;
 
   return (
     <main className="app-shell">
@@ -501,7 +510,10 @@ function Dashboard({ logout }) {
         <div className="topbar-actions">
           <span className="updated-at">
             <Clock3 size={16} />
-            {formatDateTime(portfolio.priceUpdatedAt)}
+            마지막 갱신 {formatDateTime(lastPriceRefreshAt)}
+          </span>
+          <span className="data-source">
+            {priceRefreshLabel}
           </span>
           <span className={`status ${marketOpen ? 'open' : 'closed'}`}>
             {portfolio.marketStatus?.label || '조회 전용'}
@@ -542,6 +554,12 @@ function Dashboard({ logout }) {
           <button className="notice-close" onClick={() => setMessage('')} title="알림 닫기">
             <X size={17} />
           </button>
+        </div>
+      )}
+
+      {priceRefresh.lastError && (
+        <div className="notice warning-notice">
+          최근 가격 갱신에 실패해 마지막 성공 가격을 표시하고 있습니다.
         </div>
       )}
 

@@ -15,6 +15,7 @@ const port = Number(process.env.PORT || 4000);
 const isProduction = process.env.NODE_ENV === 'production';
 const allowAfterHoursTrading = process.env.ALLOW_AFTER_HOURS_TRADING === 'true';
 const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-me';
+const priceRefreshIntervalMinutes = 15;
 
 function validateRuntimeConfig() {
   if (!isProduction) return;
@@ -65,6 +66,14 @@ console.log(`Using ${priceProvider.name} price provider.`);
 const supportedStocks = await priceProvider.getSupportedStocks();
 await store.ensureStockPrices(supportedStocks);
 
+const priceRefreshStatus = {
+  provider: priceProvider.name,
+  intervalMinutes: priceRefreshIntervalMinutes,
+  lastSuccessAt: null,
+  lastFailureAt: null,
+  lastError: null,
+};
+
 async function refreshPrices() {
   try {
     const currentStocks = await store.getStocks();
@@ -72,13 +81,17 @@ async function refreshPrices() {
     await store.refreshStockPrices(latestPrices);
     const userIds = await store.getAllUserIds();
     await Promise.all(userIds.map((userId) => recordAssetSnapshot(userId)));
+    priceRefreshStatus.lastSuccessAt = new Date().toISOString();
+    priceRefreshStatus.lastError = null;
     console.log(`Stock prices refreshed by ${priceProvider.name} provider.`);
   } catch (error) {
+    priceRefreshStatus.lastFailureAt = new Date().toISOString();
+    priceRefreshStatus.lastError = error.message;
     console.error(`Failed to refresh stock prices: ${error.message}`);
   }
 }
 
-setInterval(refreshPrices, 15 * 60 * 1000);
+setInterval(refreshPrices, priceRefreshIntervalMinutes * 60 * 1000);
 setTimeout(refreshPrices, 1000);
 
 function getMarketStatusForClient() {
@@ -88,6 +101,13 @@ function getMarketStatusForClient() {
     ...status,
     canTrade: allowAfterHoursTrading || status.isOpen,
     label: allowAfterHoursTrading ? '개발 거래 가능' : status.label,
+  };
+}
+
+function getPriceRefreshStatusForClient(priceUpdatedAt = null) {
+  return {
+    ...priceRefreshStatus,
+    priceUpdatedAt,
   };
 }
 
@@ -172,8 +192,12 @@ async function enrichPortfolio(portfolio) {
   const cashBalance = Number(portfolio.user.cash_balance);
   const stockValue = holdings.reduce((sum, holding) => sum + holding.valuation, 0);
   const totalAsset = cashBalance + stockValue;
+  const priceUpdatedAt = stocks.reduce((latest, stock) => {
+    const fetchedAt = stock.fetchedAt ? new Date(stock.fetchedAt) : null;
+    return fetchedAt && (!latest || fetchedAt > latest) ? fetchedAt : latest;
+  }, null);
 
-  return {
+  const result = {
     user: toPublicUser(portfolio.user),
     summary: {
       cashBalance,
@@ -183,10 +207,12 @@ async function enrichPortfolio(portfolio) {
     },
     holdings,
     marketStatus: getMarketStatusForClient(),
-    priceUpdatedAt: stocks.reduce((latest, stock) => {
-      const fetchedAt = stock.fetchedAt ? new Date(stock.fetchedAt) : null;
-      return fetchedAt && (!latest || fetchedAt > latest) ? fetchedAt : latest;
-    }, null),
+    priceUpdatedAt,
+  };
+
+  return {
+    ...result,
+    priceRefresh: getPriceRefreshStatusForClient(result.priceUpdatedAt),
   };
 }
 
@@ -203,7 +229,11 @@ async function recordAssetSnapshot(userId, portfolio = null) {
 }
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, marketStatus: getMarketStatusForClient() });
+  res.json({
+    ok: true,
+    marketStatus: getMarketStatusForClient(),
+    priceRefresh: getPriceRefreshStatusForClient(),
+  });
 });
 
 app.post('/auth/register', async (req, res, next) => {
@@ -267,6 +297,12 @@ app.get('/stocks', async (req, res, next) => {
     res.json({
       stocks,
       marketStatus: getMarketStatusForClient(),
+      priceRefresh: getPriceRefreshStatusForClient(
+        allStocks.reduce((latest, stock) => {
+          const fetchedAt = stock.fetchedAt ? new Date(stock.fetchedAt) : null;
+          return fetchedAt && (!latest || fetchedAt > latest) ? fetchedAt : latest;
+        }, null),
+      ),
     });
   } catch (error) {
     next(error);
