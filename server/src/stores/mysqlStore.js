@@ -23,6 +23,8 @@ function normalizeStock(row) {
     name: row.stock_name,
     sector: row.sector || '기타',
     price: Number(row.price),
+    priceChange: Number(row.price_change || 0),
+    changeRate: Number(row.change_rate || 0),
     fetchedAt: row.fetched_at,
   };
 }
@@ -78,6 +80,8 @@ export function createMysqlStore(pool) {
           stock_name VARCHAR(120) NOT NULL,
           sector VARCHAR(80) NOT NULL DEFAULT '기타',
           price DECIMAL(15, 2) NOT NULL,
+          price_change DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+          change_rate DECIMAL(10, 4) NOT NULL DEFAULT 0.0000,
           fetched_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             ON UPDATE CURRENT_TIMESTAMP
         )
@@ -85,6 +89,22 @@ export function createMysqlStore(pool) {
 
       try {
         await pool.execute("ALTER TABLE stock_prices ADD COLUMN sector VARCHAR(80) NOT NULL DEFAULT '기타' AFTER stock_name");
+      } catch (error) {
+        if (error.code !== 'ER_DUP_FIELDNAME') {
+          throw error;
+        }
+      }
+
+      try {
+        await pool.execute("ALTER TABLE stock_prices ADD COLUMN price_change DECIMAL(15, 2) NOT NULL DEFAULT 0.00 AFTER price");
+      } catch (error) {
+        if (error.code !== 'ER_DUP_FIELDNAME') {
+          throw error;
+        }
+      }
+
+      try {
+        await pool.execute("ALTER TABLE stock_prices ADD COLUMN change_rate DECIMAL(10, 4) NOT NULL DEFAULT 0.0000 AFTER price_change");
       } catch (error) {
         if (error.code !== 'ER_DUP_FIELDNAME') {
           throw error;
@@ -121,10 +141,10 @@ export function createMysqlStore(pool) {
 
       for (const stock of stocks) {
         await pool.execute(
-          `INSERT INTO stock_prices (stock_code, stock_name, sector, price)
-           VALUES (?, ?, ?, ?)
+          `INSERT INTO stock_prices (stock_code, stock_name, sector, price, price_change, change_rate)
+           VALUES (?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE stock_name = VALUES(stock_name), sector = VALUES(sector)`,
-          [stock.code, stock.name, stock.sector || '기타', stock.price],
+          [stock.code, stock.name, stock.sector || '기타', stock.price, stock.priceChange || 0, stock.changeRate || 0],
         );
         await this.seedStockPriceHistory(stock);
       }
@@ -180,10 +200,18 @@ export function createMysqlStore(pool) {
     async refreshStockPrices(stocks) {
       for (const stock of stocks) {
         await pool.execute(
-          `INSERT INTO stock_prices (stock_code, stock_name, sector, price, fetched_at)
-           VALUES (?, ?, ?, ?, NOW())
-           ON DUPLICATE KEY UPDATE stock_name = VALUES(stock_name), sector = VALUES(sector), price = VALUES(price), fetched_at = NOW()`,
-          [stock.code, stock.name, stock.sector || '기타', stock.price],
+          `INSERT INTO stock_prices (stock_code, stock_name, sector, price, price_change, change_rate, fetched_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE stock_name = VALUES(stock_name), sector = VALUES(sector),
+             price = VALUES(price), price_change = VALUES(price_change), change_rate = VALUES(change_rate), fetched_at = NOW()`,
+          [
+            stock.code,
+            stock.name,
+            stock.sector || '기타',
+            stock.price,
+            stock.priceChange || 0,
+            stock.changeRate || 0,
+          ],
         );
         await this.recordStockPriceHistory(stock);
       }

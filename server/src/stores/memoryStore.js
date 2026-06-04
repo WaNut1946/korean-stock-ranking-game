@@ -18,6 +18,8 @@ function normalizeStock(stock) {
     name: stock.name,
     sector: stock.sector || '기타',
     price: Number(stock.price),
+    priceChange: Number(stock.priceChange || stock.price_change || 0),
+    changeRate: Number(stock.changeRate || stock.change_rate || 0),
     fetchedAt: stock.fetched_at || stock.fetchedAt || new Date(),
   };
 }

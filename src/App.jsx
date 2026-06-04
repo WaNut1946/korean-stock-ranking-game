@@ -274,6 +274,19 @@ function getProviderLabel(provider) {
   return '가격 공급자 확인 중';
 }
 
+function getChangeTone(value) {
+  const numeric = Number(value || 0);
+  if (numeric > 0) return 'kr-up';
+  if (numeric < 0) return 'kr-down';
+  return 'neutral';
+}
+
+function formatSignedPercent(value) {
+  const numeric = Number(value || 0);
+  const sign = numeric > 0 ? '+' : '';
+  return `${sign}${numeric.toFixed(2)}%`;
+}
+
 function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading }) {
   if (!order) return null;
 
@@ -586,7 +599,9 @@ function Dashboard({ logout }) {
                 </span>
                 <span>
                   <strong>{formatWon(stock.price)}</strong>
-                  <small className="positive">+0.5%</small>
+                  <small className={getChangeTone(stock.changeRate)}>
+                    {formatSignedPercent(stock.changeRate)}
+                  </small>
                 </span>
               </button>
             ))}

@@ -26,10 +26,14 @@ export function createMockPriceProvider() {
         const current = currentMap.get(stock.code) || stock;
         const movement = 1 + (Math.random() * 0.04 - 0.02);
         const nextPrice = Math.max(1000, Math.round((Number(current.price) * movement) / 100) * 100);
+        const previousPrice = Number(current.price || stock.price);
+        const priceChange = nextPrice - previousPrice;
 
         return {
           ...stock,
           price: nextPrice,
+          priceChange,
+          changeRate: previousPrice ? (priceChange / previousPrice) * 100 : 0,
         };
       });
     },

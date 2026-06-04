@@ -887,6 +887,21 @@ input {
   font-weight: 800;
 }
 
+.kr-up {
+  color: #c01f28;
+  font-weight: 900;
+}
+
+.kr-down {
+  color: #175cd3;
+  font-weight: 900;
+}
+
+.neutral {
+  color: #667085;
+  font-weight: 800;
+}
+
 .trade-buy,
 .trade-sell {
   font-weight: 900;

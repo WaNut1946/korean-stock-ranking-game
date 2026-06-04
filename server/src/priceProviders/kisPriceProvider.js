@@ -87,7 +87,11 @@ export function createKisPriceProvider() {
       throw new Error(data?.msg1 || `Invalid KIS price response for ${stock.code}.`);
     }
 
-    return Math.round(price);
+    return {
+      price: Math.round(price),
+      priceChange: Number(data?.output?.prdy_vrss || 0),
+      changeRate: Number(data?.output?.prdy_ctrt || 0),
+    };
   }
 
   return {
@@ -107,8 +111,8 @@ export function createKisPriceProvider() {
         const current = currentMap.get(stock.code) || stock;
 
         try {
-          const price = await getPrice(stock);
-          results.push({ ...stock, price });
+          const quote = await getPrice(stock);
+          results.push({ ...stock, ...quote });
           successfulCount += 1;
         } catch (error) {
           const detail = error.response?.data?.msg1 || error.response?.data?.message || error.message;
@@ -121,6 +125,8 @@ export function createKisPriceProvider() {
           results.push({
             ...stock,
             price: Number(current.price || stock.price),
+            priceChange: Number(current.priceChange || stock.priceChange || 0),
+            changeRate: Number(current.changeRate || stock.changeRate || 0),
           });
         }
 
