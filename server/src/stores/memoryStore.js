@@ -27,6 +27,9 @@ function normalizeStock(stock) {
 function normalizeTrade(trade) {
   return {
     id: trade.id,
+    userId: trade.user_id || trade.userId,
+    userNickname: trade.nickname || trade.userNickname,
+    userEmail: trade.email || trade.userEmail,
     stockCode: trade.stock_code,
     stockName: trade.stock_name,
     type: trade.type,
@@ -190,6 +193,47 @@ export function createMemoryStore() {
         stockHistoryCount: [...stockPriceHistory.values()].reduce((sum, rows) => sum + rows.length, 0),
         latestStockHistoryAt: latestStockHistory,
       };
+    },
+
+    async getAdminRecentTrades(limit = 30) {
+      return trades
+        .map((trade) => {
+          const user = users.find((item) => item.id === Number(trade.user_id));
+          return normalizeTrade({
+            ...trade,
+            nickname: user?.nickname,
+            email: user?.email,
+          });
+        })
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .slice(0, Math.min(Math.max(Number(limit) || 30, 1), 100));
+    },
+
+    async getAdminUsers(priceMap, limit = 100) {
+      return users
+        .slice()
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, Math.min(Math.max(Number(limit) || 100, 1), 300))
+        .map((user) => {
+          const userHoldings = holdings.filter((holding) => holding.user_id === user.id);
+          const stockValue = userHoldings.reduce(
+            (sum, holding) => sum + holding.quantity * (priceMap.get(holding.stock_code) || 0),
+            0,
+          );
+          const totalAsset = user.cash_balance + stockValue;
+
+          return {
+            userId: user.id,
+            email: user.email,
+            nickname: user.nickname,
+            cashBalance: user.cash_balance,
+            stockValue,
+            totalAsset,
+            returnRate: ((totalAsset - INITIAL_CASH) / INITIAL_CASH) * 100,
+            holdingCount: userHoldings.length,
+            createdAt: user.created_at,
+          };
+        });
     },
 
     async getHoldings(userId) {

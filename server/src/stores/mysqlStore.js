@@ -32,6 +32,9 @@ function normalizeStock(row) {
 function normalizeTrade(row) {
   return {
     id: row.id,
+    userId: row.user_id,
+    userNickname: row.nickname,
+    userEmail: row.email,
     stockCode: row.stock_code,
     stockName: row.stock_name,
     type: row.type,
@@ -282,6 +285,59 @@ export function createMysqlStore(pool) {
         stockHistoryCount: Number(stockHistoryStats.stock_history_count || 0),
         latestStockHistoryAt: stockHistoryStats.latest_stock_history_at,
       };
+    },
+
+    async getAdminRecentTrades(limit = 30) {
+      const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+      const [rows] = await pool.execute(
+        `SELECT
+           trades.id,
+           trades.user_id,
+           users.nickname,
+           users.email,
+           trades.stock_code,
+           trades.stock_name,
+           trades.type,
+           trades.quantity,
+           trades.price,
+           trades.total_amount,
+           trades.created_at
+         FROM trades
+         JOIN users ON users.id = trades.user_id
+         ORDER BY trades.created_at DESC, trades.id DESC
+         LIMIT ${safeLimit}`,
+      );
+      return rows.map(normalizeTrade);
+    },
+
+    async getAdminUsers(priceMap, limit = 100) {
+      const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 300);
+      const [users] = await pool.execute(
+        `SELECT id, email, nickname, cash_balance, created_at FROM users ORDER BY created_at DESC LIMIT ${safeLimit}`,
+      );
+      const [holdings] = await pool.execute('SELECT user_id, stock_code, quantity FROM holdings');
+
+      return users.map((user) => {
+        const userHoldings = holdings.filter((holding) => holding.user_id === user.id);
+        const stockValue = userHoldings.reduce(
+          (sum, holding) => sum + Number(holding.quantity) * (priceMap.get(holding.stock_code) || 0),
+          0,
+        );
+        const cashBalance = Number(user.cash_balance);
+        const totalAsset = cashBalance + stockValue;
+
+        return {
+          userId: user.id,
+          email: user.email,
+          nickname: user.nickname,
+          cashBalance,
+          stockValue,
+          totalAsset,
+          returnRate: ((totalAsset - INITIAL_CASH) / INITIAL_CASH) * 100,
+          holdingCount: userHoldings.length,
+          createdAt: user.created_at,
+        };
+      });
     },
 
     async getHoldings(userId) {

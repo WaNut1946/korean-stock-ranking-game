@@ -83,10 +83,23 @@ const priceRefreshStatus = {
   failedCount: 0,
   failedStocks: [],
 };
+const priceRefreshLogs = [];
+
+function addPriceRefreshLog(entry) {
+  priceRefreshLogs.unshift({
+    id: `${Date.now()}-${priceRefreshLogs.length}`,
+    provider: priceProvider.name,
+    createdAt: new Date().toISOString(),
+    ...entry,
+  });
+  priceRefreshLogs.splice(20);
+}
 
 async function refreshPrices() {
+  let currentStocks = [];
+
   try {
-    const currentStocks = await store.getStocks();
+    currentStocks = await store.getStocks();
     const latestPrices = await priceProvider.getLatestPrices(currentStocks);
     await store.refreshStockPrices(latestPrices);
     const userIds = await store.getAllUserIds();
@@ -103,10 +116,24 @@ async function refreshPrices() {
       `Stock prices refreshed by ${priceProvider.name} provider. ` +
         `success=${priceRefreshStatus.successfulCount}, failed=${priceRefreshStatus.failedCount}`,
     );
+    addPriceRefreshLog({
+      status: priceRefreshStatus.failedCount ? 'partial' : 'success',
+      successfulCount: priceRefreshStatus.successfulCount,
+      failedCount: priceRefreshStatus.failedCount,
+      failedStocks: priceRefreshStatus.failedStocks,
+      message: priceRefreshStatus.lastError || '가격 갱신이 정상 완료되었습니다.',
+    });
   } catch (error) {
     priceRefreshStatus.lastFailureAt = new Date().toISOString();
     priceRefreshStatus.lastError = error.message;
     console.error(`Failed to refresh stock prices: ${error.message}`);
+    addPriceRefreshLog({
+      status: 'failed',
+      successfulCount: 0,
+      failedCount: currentStocks?.length || 0,
+      failedStocks: [],
+      message: error.message,
+    });
   }
 }
 
@@ -489,10 +516,19 @@ app.get('/asset-history', requireAuth, requireActiveUser, async (req, res, next)
 app.get('/admin/status', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
   try {
     const stats = await store.getAdminStats();
+    const stocks = await store.getStocks();
+    const priceMap = new Map(stocks.map((stock) => [stock.code, stock.price]));
+    const [recentTrades, users] = await Promise.all([
+      store.getAdminRecentTrades(30),
+      store.getAdminUsers(priceMap, 50),
+    ]);
 
     return res.json({
       stats,
+      recentTrades,
+      users,
       priceRefresh: getPriceRefreshStatusForClient(),
+      priceRefreshLogs,
       marketStatus: getMarketStatusForClient(),
       server: {
         environment: process.env.NODE_ENV || 'development',

@@ -1004,13 +1004,24 @@ input {
 }
 
 .admin-failed-list span {
+  display: grid;
+  gap: 3px;
   border: 1px solid #ffc9c4;
-  border-radius: 999px;
+  border-radius: 6px;
   background: #fff1ef;
   color: #b42318;
-  padding: 6px 9px;
+  padding: 7px 9px;
   font-size: 12px;
   font-weight: 900;
+}
+
+.admin-failed-list small {
+  max-width: 280px;
+  overflow: hidden;
+  color: #912018;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-message {
@@ -1018,6 +1029,116 @@ input {
   gap: 8px;
   color: #475467;
   font-weight: 800;
+}
+
+.admin-two-column.wide {
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+}
+
+.admin-table {
+  display: grid;
+  overflow-x: auto;
+}
+
+.admin-table-row {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  border-bottom: 1px solid #eef2f6;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.admin-table-row.head {
+  min-height: 34px;
+  color: #667085;
+  font-weight: 900;
+}
+
+.admin-table-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-row strong,
+.admin-table-row small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-row small {
+  margin-top: 3px;
+  color: #667085;
+}
+
+.trade-admin-table .admin-table-row {
+  grid-template-columns:
+    minmax(118px, 0.75fr) minmax(135px, 1fr) 54px minmax(120px, 0.95fr)
+    minmax(58px, 0.45fr) minmax(100px, 0.7fr);
+  min-width: 720px;
+}
+
+.user-admin-table .admin-table-row {
+  grid-template-columns:
+    minmax(170px, 1.2fr) minmax(100px, 0.75fr) minmax(100px, 0.75fr)
+    minmax(110px, 0.8fr) minmax(70px, 0.45fr) 52px minmax(120px, 0.8fr);
+  min-width: 860px;
+}
+
+.admin-log-list {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-log-item {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 4px 10px;
+  border: 1px solid #d9e0e6;
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.admin-log-item.success {
+  border-left-color: #067647;
+}
+
+.admin-log-item.partial {
+  border-left-color: #b54708;
+}
+
+.admin-log-item.failed {
+  border-left-color: #b42318;
+}
+
+.admin-log-item strong {
+  color: #172033;
+}
+
+.admin-log-item span,
+.admin-log-item small,
+.admin-log-item p {
+  min-width: 0;
+  margin: 0;
+  color: #667085;
+  font-size: 12px;
+}
+
+.admin-log-item p {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notice,
@@ -1233,7 +1354,8 @@ input {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-two-column {
+  .admin-two-column,
+  .admin-two-column.wide {
     grid-template-columns: 1fr;
   }
 

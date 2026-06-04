@@ -872,6 +872,9 @@ function AdminPage({ logout }) {
 
   const stats = status?.stats || {};
   const priceRefresh = status?.priceRefresh || {};
+  const recentTrades = status?.recentTrades || [];
+  const users = status?.users || [];
+  const priceRefreshLogs = status?.priceRefreshLogs || [];
   const marketStatus = status?.marketStatus || {};
   const server = status?.server || {};
   const failedCount = Number(priceRefresh.failedCount || 0);
@@ -949,7 +952,10 @@ function AdminPage({ logout }) {
               {failedCount > 0 && (
                 <div className="admin-failed-list">
                   {(priceRefresh.failedStocks || []).slice(0, 10).map((stock) => (
-                    <span key={stock.code || stock.name}>{stock.name || stock.code}</span>
+                    <span key={stock.code || stock.name}>
+                      <strong>{stock.name || stock.code}</strong>
+                      <small>{stock.code} · {stock.message || '갱신 실패'}</small>
+                    </span>
                   ))}
                 </div>
               )}
@@ -981,6 +987,99 @@ function AdminPage({ logout }) {
                 </div>
               </div>
             </section>
+          </section>
+
+          <section className="admin-two-column wide">
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>최근 전체 거래</h2>
+                <span className="muted">최대 30건</span>
+              </div>
+              <div className="admin-table trade-admin-table">
+                <div className="admin-table-row head">
+                  <span>시간</span>
+                  <span>유저</span>
+                  <span>구분</span>
+                  <span>종목</span>
+                  <span>수량</span>
+                  <span>금액</span>
+                </div>
+                {recentTrades.map((trade) => (
+                  <div className="admin-table-row" key={trade.id}>
+                    <span>{formatDateTime(trade.createdAt)}</span>
+                    <span>
+                      <strong>{trade.userNickname || '-'}</strong>
+                      <small>{trade.userEmail || ''}</small>
+                    </span>
+                    <span className={trade.type === 'BUY' ? 'trade-buy' : 'trade-sell'}>
+                      {trade.type === 'BUY' ? '매수' : '매도'}
+                    </span>
+                    <span>
+                      <strong>{trade.stockName}</strong>
+                      <small>{trade.stockCode}</small>
+                    </span>
+                    <span>{Number(trade.quantity || 0).toLocaleString('ko-KR')}</span>
+                    <span>{formatWon(trade.totalAmount)}</span>
+                  </div>
+                ))}
+                {recentTrades.length === 0 && <p className="empty">최근 거래가 없습니다.</p>}
+              </div>
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>가격 갱신 로그</h2>
+                <span className="muted">최근 20회</span>
+              </div>
+              <div className="admin-log-list">
+                {priceRefreshLogs.map((log) => (
+                  <div className={`admin-log-item ${log.status}`} key={log.id}>
+                    <strong>{log.status === 'success' ? '성공' : log.status === 'partial' ? '일부 실패' : '실패'}</strong>
+                    <span>{formatDateTime(log.createdAt)}</span>
+                    <small>
+                      성공 {log.successfulCount || 0} · 실패 {log.failedCount || 0}
+                    </small>
+                    <p>{log.message}</p>
+                  </div>
+                ))}
+                {priceRefreshLogs.length === 0 && <p className="empty">아직 기록된 가격 갱신 로그가 없습니다.</p>}
+              </div>
+            </section>
+          </section>
+
+          <section className="panel">
+            <div className="panel-heading">
+              <h2>유저/랭킹 관리</h2>
+              <span className="muted">최근 가입 50명</span>
+            </div>
+            <div className="admin-table user-admin-table">
+              <div className="admin-table-row head">
+                <span>유저</span>
+                <span>현금</span>
+                <span>주식 평가</span>
+                <span>총자산</span>
+                <span>수익률</span>
+                <span>보유</span>
+                <span>가입일</span>
+              </div>
+              {users.map((user) => (
+                <div className="admin-table-row" key={user.userId}>
+                  <span>
+                    <strong>{user.nickname}</strong>
+                    <small>{user.email}</small>
+                  </span>
+                  <span>{formatWon(user.cashBalance)}</span>
+                  <span>{formatWon(user.stockValue)}</span>
+                  <span>{formatWon(user.totalAsset)}</span>
+                  <span className={Number(user.returnRate || 0) >= 0 ? 'positive' : 'negative'}>
+                    {formatPercent(user.returnRate)}
+                  </span>
+                  <span>{user.holdingCount || 0}건</span>
+                  <span>{formatDateTime(user.createdAt)}</span>
+                </div>
+              ))}
+              {users.length === 0 && <p className="empty">가입한 유저가 없습니다.</p>}
+            </div>
           </section>
         </>
       )}
