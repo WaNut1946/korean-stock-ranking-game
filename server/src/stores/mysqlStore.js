@@ -67,8 +67,8 @@ function normalizeAssetHistory(row) {
 const historyLimits = {
   '1D': { days: 1, bucketSeconds: 15 * 60, limit: 96 },
   '1W': { days: 7, bucketSeconds: 60 * 60, limit: 168 },
-  '1M': { days: 31, bucketSeconds: 6 * 60 * 60, limit: 124 },
-  '1Y': { days: 365, bucketSeconds: 24 * 60 * 60, limit: 365 },
+  '1M': { days: 31, bucketSeconds: 3 * 60 * 60, limit: 248 },
+  '1Y': { days: 365, bucketSeconds: 30 * 24 * 60 * 60, limit: 13 },
 };
 
 export function createMysqlStore(pool) {

@@ -20,7 +20,7 @@ const BRAND_SHORT = '모의투자 시뮬레이터';
 const PERIODS = [
   { key: '1D', label: '1일', points: 8, stepMs: 15 * 60 * 1000 },
   { key: '1W', label: '1주', points: 7, stepMs: 24 * 60 * 60 * 1000 },
-  { key: '1M', label: '1월', points: 10, stepMs: 3 * 24 * 60 * 60 * 1000 },
+  { key: '1M', label: '1월', points: 10, stepMs: 3 * 60 * 60 * 1000 },
   { key: '1Y', label: '1년', points: 12, stepMs: 30 * 24 * 60 * 60 * 1000 },
 ];
 
@@ -200,7 +200,6 @@ function StockChart({ stock, period, setPeriod, history }) {
   });
   const points = plottedPoints.map((item) => `${item.x},${item.y}`).join(' ');
   const fillPoints = `24,184 ${points} 576,184`;
-  const activePoint = hoveredPoint ?? plottedPoints.at(-1);
 
   if (!stock) {
     return <section className="panel chart-main">종목을 선택해 주세요.</section>;
@@ -245,16 +244,16 @@ function StockChart({ stock, period, setPeriod, history }) {
             />
           ))}
         </svg>
-        {activePoint && (
+        {hoveredPoint && (
           <div
             className="chart-tooltip"
             style={{
-              left: `${(activePoint.x / 600) * 100}%`,
-              top: `${(activePoint.y / 210) * 100}%`,
+              left: `${(hoveredPoint.x / 600) * 100}%`,
+              top: `${(hoveredPoint.y / 210) * 100}%`,
             }}
           >
-            <strong>{formatWon(activePoint.price)}</strong>
-            <span>{formatDateTime(activePoint.recordedAt)}</span>
+            <strong>{formatWon(hoveredPoint.price)}</strong>
+            <span>{formatDateTime(hoveredPoint.recordedAt)}</span>
           </div>
         )}
       </div>
