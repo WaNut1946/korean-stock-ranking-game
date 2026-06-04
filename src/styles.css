@@ -123,6 +123,32 @@ a {
   font-size: 18px;
 }
 
+.auth-disclaimer {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #f4dca3;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #5f4708;
+  padding: 13px 14px;
+  font-size: 13px;
+}
+
+.auth-disclaimer strong {
+  font-size: 14px;
+}
+
+.auth-disclaimer ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.auth-disclaimer li {
+  line-height: 1.45;
+}
+
 .topbar-actions {
   display: flex;
   align-items: center;

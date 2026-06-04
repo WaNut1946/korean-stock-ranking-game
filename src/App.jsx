@@ -87,6 +87,16 @@ function AuthPage({ mode, saveSession }) {
           <p className="muted">가상 1억 원으로 한국 주식 포트폴리오를 키워보세요.</p>
         </div>
 
+        <div className="auth-disclaimer" role="note">
+          <strong>서비스 안내</strong>
+          <ul>
+            <li>실제 돈이 아닌 가상 자산으로 진행되는 모의투자 게임입니다.</li>
+            <li>주가는 한국투자증권 API 기준으로 약 15분마다 갱신됩니다.</li>
+            <li>매수/매도는 평일 09:00~15:30에만 가능합니다.</li>
+            <li>제공 정보는 투자 권유나 수익 보장을 의미하지 않습니다.</li>
+          </ul>
+        </div>
+
         <form onSubmit={submit} className="stack">
           <label>
             이메일
