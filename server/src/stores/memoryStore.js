@@ -78,30 +78,7 @@ export function createMemoryStore() {
           const current = stockPrices.get(stock.code);
           stockPrices.set(stock.code, normalizeStock({ ...current, name: stock.name, sector: stock.sector }));
         }
-        await this.seedStockPriceHistory(stock);
       }
-    },
-
-    async seedStockPriceHistory(stock) {
-      if (stockPriceHistory.has(stock.code)) return;
-
-      const basePrice = Number(stock.price);
-      const rows = [];
-      for (let index = 11; index >= 0; index -= 1) {
-        const wave = Math.sin((index + Number(stock.code)) * 0.7) * basePrice * 0.025;
-        const drift = (index - 5.5) * basePrice * 0.006;
-        const price = Math.max(1000, Math.round((basePrice + wave + drift) / 100) * 100);
-        rows.push(
-          normalizePriceHistory({
-            stockCode: stock.code,
-            stockName: stock.name,
-            sector: stock.sector,
-            price,
-            recordedAt: new Date(Date.now() - index * 15 * 60 * 1000),
-          }),
-        );
-      }
-      stockPriceHistory.set(stock.code, rows);
     },
 
     async recordStockPriceHistory(stock) {

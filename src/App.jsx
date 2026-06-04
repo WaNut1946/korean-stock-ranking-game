@@ -159,25 +159,6 @@ function SummaryTile({ icon, label, value, tone }) {
   );
 }
 
-function buildChartPoints(stock, period) {
-  const periodConfig = PERIODS.find((item) => item.key === period) || PERIODS[0];
-  const count = periodConfig.points;
-  const seed = Number(stock?.code || 1);
-  const price = Number(stock?.price || 10000);
-  const end = Date.now();
-
-  return Array.from({ length: count }, (_, index) => {
-    const progress = index / Math.max(count - 1, 1);
-    const drift = periodConfig.drift;
-    const wave = Math.sin(index * 1.17 + seed * 0.001) * price * 0.025;
-    return {
-      price: Math.max(100, price * (1 - drift + progress * drift) + wave),
-      recordedAt: new Date(end - (count - index - 1) * periodConfig.stepMs).toISOString(),
-      estimated: true,
-    };
-  });
-}
-
 function StockChart({ stock, period, setPeriod, history }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const chartPoints = useMemo(() => {
@@ -188,17 +169,19 @@ function StockChart({ stock, period, setPeriod, history }) {
         estimated: false,
       }))
       .filter((item) => item.price > 0);
-    return historyPoints.length >= 2 ? historyPoints : buildChartPoints(stock, period);
-  }, [history, stock, period]);
-  const values = chartPoints.map((item) => item.price);
+    return historyPoints;
+  }, [history]);
+
+  const hasEnoughHistory = chartPoints.length >= 2;
+  const values = hasEnoughHistory ? chartPoints.map((item) => item.price) : [Number(stock?.price || 0)];
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = Math.max(max - min, 1);
-  const plottedPoints = chartPoints.map((item, index) => {
+  const plottedPoints = hasEnoughHistory ? chartPoints.map((item, index) => {
     const x = 24 + index * (552 / Math.max(chartPoints.length - 1, 1));
     const y = 172 - ((item.price - min) / range) * 118;
     return { ...item, x, y };
-  });
+  }) : [];
   const points = plottedPoints.map((item) => `${item.x},${item.y}`).join(' ');
   const fillPoints = `24,184 ${points} 576,184`;
 
@@ -228,8 +211,8 @@ function StockChart({ stock, period, setPeriod, history }) {
             </linearGradient>
           </defs>
           <path className="chart-grid" d="M24 54H576M24 93H576M24 132H576M24 172H576" />
-          <polygon points={fillPoints} fill="url(#stockFill)" />
-          <polyline className="chart-line" points={points} />
+          {hasEnoughHistory && <polygon points={fillPoints} fill="url(#stockFill)" />}
+          {hasEnoughHistory && <polyline className="chart-line" points={points} />}
           {plottedPoints.map((point) => (
             <circle
               className="chart-dot interactive"
@@ -245,6 +228,11 @@ function StockChart({ stock, period, setPeriod, history }) {
             />
           ))}
         </svg>
+        {!hasEnoughHistory && (
+          <div className="chart-empty">
+            실제 가격 기록이 더 쌓이면 차트가 표시됩니다.
+          </div>
+        )}
         {hoveredPoint && (
           <div
             className="chart-tooltip"

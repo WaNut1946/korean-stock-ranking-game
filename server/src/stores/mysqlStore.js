@@ -147,46 +147,6 @@ export function createMysqlStore(pool) {
            ON DUPLICATE KEY UPDATE stock_name = VALUES(stock_name), sector = VALUES(sector)`,
           [stock.code, stock.name, stock.sector || '기타', stock.price, stock.priceChange || 0, stock.changeRate || 0],
         );
-        await this.seedStockPriceHistory(stock);
-      }
-    },
-
-    async seedStockPriceHistory(stock) {
-      const [[existing]] = await pool.execute(
-        `SELECT
-          COUNT(*) AS count,
-          COUNT(DISTINCT price) AS priceCount,
-          MIN(recorded_at) AS firstRecordedAt,
-          MAX(recorded_at) AS lastRecordedAt
-         FROM stock_price_history
-         WHERE stock_code = ?`,
-        [stock.code],
-      );
-
-      const historySpanMs =
-        existing.firstRecordedAt && existing.lastRecordedAt
-          ? new Date(existing.lastRecordedAt).getTime() - new Date(existing.firstRecordedAt).getTime()
-          : 0;
-      const hasUsableHistory =
-        Number(existing.count) >= 12 &&
-        Number(existing.priceCount) >= 2 &&
-        historySpanMs >= 30 * 60 * 1000;
-
-      if (hasUsableHistory) return;
-
-      await pool.execute('DELETE FROM stock_price_history WHERE stock_code = ?', [stock.code]);
-
-      const basePrice = Number(stock.price);
-      for (let index = 11; index >= 0; index -= 1) {
-        const wave = Math.sin((index + Number(stock.code)) * 0.7) * basePrice * 0.025;
-        const drift = (index - 5.5) * basePrice * 0.006;
-        const price = Math.max(1000, Math.round((basePrice + wave + drift) / 100) * 100);
-        const recordedAt = new Date(Date.now() - index * 15 * 60 * 1000);
-        await pool.execute(
-          `INSERT INTO stock_price_history (stock_code, stock_name, sector, price, recorded_at)
-           VALUES (?, ?, ?, ?, ?)`,
-          [stock.code, stock.name, stock.sector || '기타', price, recordedAt],
-        );
       }
     },
 

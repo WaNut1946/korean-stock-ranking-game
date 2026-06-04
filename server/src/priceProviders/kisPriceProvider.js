@@ -4,6 +4,7 @@ import { mockStocks } from '../mockStocks.js';
 const DEFAULT_BASE_URL = 'https://openapi.koreainvestment.com:9443';
 const TOKEN_SAFETY_MS = 60 * 1000;
 const DEFAULT_REQUEST_DELAY_MS = 1000;
+const DEFAULT_MAX_PRICE_JUMP_RATIO = 3;
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -24,6 +25,7 @@ export function createKisPriceProvider() {
   const appKey = requireEnv('KIS_APP_KEY');
   const appSecret = requireEnv('KIS_APP_SECRET');
   const requestDelayMs = Number(process.env.KIS_REQUEST_DELAY_MS || DEFAULT_REQUEST_DELAY_MS);
+  const maxPriceJumpRatio = Number(process.env.KIS_MAX_PRICE_JUMP_RATIO || DEFAULT_MAX_PRICE_JUMP_RATIO);
   let token = null;
   let tokenExpiresAt = 0;
   let lastStats = {
@@ -94,6 +96,21 @@ export function createKisPriceProvider() {
     };
   }
 
+  function validateQuote(stock, quote, current) {
+    const currentPrice = Number(current?.price || 0);
+
+    if (!currentPrice) return quote;
+
+    const ratio = quote.price / currentPrice;
+    if (ratio > maxPriceJumpRatio || ratio < 1 / maxPriceJumpRatio) {
+      throw new Error(
+        `Abnormal KIS price jump for ${stock.code}: current=${currentPrice}, received=${quote.price}`,
+      );
+    }
+
+    return quote;
+  }
+
   return {
     name: 'kis',
 
@@ -111,7 +128,7 @@ export function createKisPriceProvider() {
         const current = currentMap.get(stock.code) || stock;
 
         try {
-          const quote = await getPrice(stock);
+          const quote = validateQuote(stock, await getPrice(stock), current);
           results.push({ ...stock, ...quote });
           successfulCount += 1;
         } catch (error) {

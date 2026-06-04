@@ -496,6 +496,17 @@ input {
   font-weight: 800;
 }
 
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #667085;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .period-tabs {
   display: flex;
   justify-content: center;
