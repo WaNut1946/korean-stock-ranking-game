@@ -559,7 +559,7 @@ function Dashboard({ logout }) {
 
       {priceRefresh.lastError && (
         <div className="notice warning-notice">
-          최근 가격 갱신에 실패해 마지막 성공 가격을 표시하고 있습니다.
+          최근 가격 갱신에서 {priceRefresh.failedCount || '일부'}개 종목은 이전 가격을 표시하고 있습니다.
         </div>
       )}
 

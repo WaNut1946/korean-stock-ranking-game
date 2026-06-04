@@ -1,6 +1,12 @@
 import { mockStocks } from '../mockStocks.js';
 
 export function createMockPriceProvider() {
+  let lastStats = {
+    successfulCount: mockStocks.length,
+    failedCount: 0,
+    failedStocks: [],
+  };
+
   return {
     name: 'mock',
 
@@ -10,6 +16,11 @@ export function createMockPriceProvider() {
 
     async getLatestPrices(currentStocks = []) {
       const currentMap = new Map(currentStocks.map((stock) => [stock.code, stock]));
+      lastStats = {
+        successfulCount: mockStocks.length,
+        failedCount: 0,
+        failedStocks: [],
+      };
 
       return mockStocks.map((stock) => {
         const current = currentMap.get(stock.code) || stock;
@@ -21,6 +32,10 @@ export function createMockPriceProvider() {
           price: nextPrice,
         };
       });
+    },
+
+    getLastStats() {
+      return lastStats;
     },
   };
 }

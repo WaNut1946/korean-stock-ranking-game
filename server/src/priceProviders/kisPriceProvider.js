@@ -3,7 +3,7 @@ import { mockStocks } from '../mockStocks.js';
 
 const DEFAULT_BASE_URL = 'https://openapi.koreainvestment.com:9443';
 const TOKEN_SAFETY_MS = 60 * 1000;
-const REQUEST_DELAY_MS = 180;
+const DEFAULT_REQUEST_DELAY_MS = 1000;
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -23,8 +23,14 @@ export function createKisPriceProvider() {
   const baseURL = process.env.KIS_BASE_URL || DEFAULT_BASE_URL;
   const appKey = requireEnv('KIS_APP_KEY');
   const appSecret = requireEnv('KIS_APP_SECRET');
+  const requestDelayMs = Number(process.env.KIS_REQUEST_DELAY_MS || DEFAULT_REQUEST_DELAY_MS);
   let token = null;
   let tokenExpiresAt = 0;
+  let lastStats = {
+    successfulCount: 0,
+    failedCount: 0,
+    failedStocks: [],
+  };
 
   const client = axios.create({
     baseURL,
@@ -94,6 +100,8 @@ export function createKisPriceProvider() {
     async getLatestPrices(currentStocks = []) {
       const currentMap = new Map(currentStocks.map((stock) => [stock.code, stock]));
       const results = [];
+      const failedStocks = [];
+      let successfulCount = 0;
 
       for (const stock of mockStocks) {
         const current = currentMap.get(stock.code) || stock;
@@ -101,18 +109,35 @@ export function createKisPriceProvider() {
         try {
           const price = await getPrice(stock);
           results.push({ ...stock, price });
+          successfulCount += 1;
         } catch (error) {
-          console.warn(`KIS price fetch failed for ${stock.code}: ${error.message}`);
+          const detail = error.response?.data?.msg1 || error.response?.data?.message || error.message;
+          console.warn(`KIS price fetch failed for ${stock.code}: ${detail}`);
+          failedStocks.push({
+            code: stock.code,
+            name: stock.name,
+            message: detail,
+          });
           results.push({
             ...stock,
             price: Number(current.price || stock.price),
           });
         }
 
-        await sleep(REQUEST_DELAY_MS);
+        await sleep(requestDelayMs);
       }
 
+      lastStats = {
+        successfulCount,
+        failedCount: failedStocks.length,
+        failedStocks,
+      };
+
       return results;
+    },
+
+    getLastStats() {
+      return lastStats;
     },
   };
 }

@@ -72,6 +72,9 @@ const priceRefreshStatus = {
   lastSuccessAt: null,
   lastFailureAt: null,
   lastError: null,
+  successfulCount: 0,
+  failedCount: 0,
+  failedStocks: [],
 };
 
 async function refreshPrices() {
@@ -81,9 +84,18 @@ async function refreshPrices() {
     await store.refreshStockPrices(latestPrices);
     const userIds = await store.getAllUserIds();
     await Promise.all(userIds.map((userId) => recordAssetSnapshot(userId)));
+    const stats = priceProvider.getLastStats?.() || {};
     priceRefreshStatus.lastSuccessAt = new Date().toISOString();
-    priceRefreshStatus.lastError = null;
-    console.log(`Stock prices refreshed by ${priceProvider.name} provider.`);
+    priceRefreshStatus.successfulCount = Number(stats.successfulCount || latestPrices.length);
+    priceRefreshStatus.failedCount = Number(stats.failedCount || 0);
+    priceRefreshStatus.failedStocks = stats.failedStocks || [];
+    priceRefreshStatus.lastError = priceRefreshStatus.failedCount
+      ? `${priceRefreshStatus.failedCount}개 종목은 이전 가격을 유지했습니다.`
+      : null;
+    console.log(
+      `Stock prices refreshed by ${priceProvider.name} provider. ` +
+        `success=${priceRefreshStatus.successfulCount}, failed=${priceRefreshStatus.failedCount}`,
+    );
   } catch (error) {
     priceRefreshStatus.lastFailureAt = new Date().toISOString();
     priceRefreshStatus.lastError = error.message;
