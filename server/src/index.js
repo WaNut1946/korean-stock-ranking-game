@@ -159,6 +159,21 @@ function getOptionalUserId(req) {
   }
 }
 
+async function requireActiveUser(req, res, next) {
+  try {
+    const user = await store.findUserById(req.user.sub);
+
+    if (!user) {
+      return res.status(401).json({ message: '계정 정보를 찾을 수 없습니다. 다시 로그인해 주세요.' });
+    }
+
+    req.activeUser = user;
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+}
+
 async function parseTradeBody(req, res) {
   const stockCode = String(req.body.stockCode || '').trim();
   const quantity = Number(req.body.quantity);
@@ -178,6 +193,13 @@ async function parseTradeBody(req, res) {
 }
 
 async function enrichPortfolio(portfolio) {
+  if (!portfolio?.user) {
+    const error = new Error('AUTH_USER_NOT_FOUND');
+    error.status = 401;
+    error.publicMessage = '계정 정보를 찾을 수 없습니다. 다시 로그인해 주세요.';
+    throw error;
+  }
+
   const stocks = await store.getStocks();
   const priceMap = new Map(stocks.map((stock) => [stock.code, stock.price]));
 
@@ -338,7 +360,7 @@ app.get('/stocks/:code/history', async (req, res, next) => {
   }
 });
 
-app.get('/portfolio', requireAuth, async (req, res, next) => {
+app.get('/portfolio', requireAuth, requireActiveUser, async (req, res, next) => {
   try {
     const portfolio = await store.getPortfolio(req.user.sub);
     return res.json(await enrichPortfolio(portfolio));
@@ -347,7 +369,7 @@ app.get('/portfolio', requireAuth, async (req, res, next) => {
   }
 });
 
-app.post('/trade/buy', requireAuth, requireTradingOpen, async (req, res, next) => {
+app.post('/trade/buy', requireAuth, requireActiveUser, requireTradingOpen, async (req, res, next) => {
   try {
     const parsed = await parseTradeBody(req, res);
     if (!parsed) return;
@@ -367,7 +389,7 @@ app.post('/trade/buy', requireAuth, requireTradingOpen, async (req, res, next) =
   }
 });
 
-app.post('/trade/sell', requireAuth, requireTradingOpen, async (req, res, next) => {
+app.post('/trade/sell', requireAuth, requireActiveUser, requireTradingOpen, async (req, res, next) => {
   try {
     const parsed = await parseTradeBody(req, res);
     if (!parsed) return;
@@ -416,7 +438,7 @@ app.get('/ranking', async (req, res, next) => {
   }
 });
 
-app.get('/trades', requireAuth, async (req, res, next) => {
+app.get('/trades', requireAuth, requireActiveUser, async (req, res, next) => {
   try {
     const trades = await store.getTrades(req.user.sub);
     return res.json({ trades });
@@ -425,7 +447,7 @@ app.get('/trades', requireAuth, async (req, res, next) => {
   }
 });
 
-app.get('/asset-history', requireAuth, async (req, res, next) => {
+app.get('/asset-history', requireAuth, requireActiveUser, async (req, res, next) => {
   try {
     let history = await store.getAssetHistory(req.user.sub);
 
@@ -441,6 +463,10 @@ app.get('/asset-history', requireAuth, async (req, res, next) => {
 });
 
 app.use((error, req, res, next) => {
+  if (error.status) {
+    return res.status(error.status).json({ message: error.publicMessage || error.message });
+  }
+
   console.error(error);
   res.status(500).json({ message: '서버 오류가 발생했습니다.' });
 });
