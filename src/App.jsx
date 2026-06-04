@@ -57,6 +57,7 @@ function AuthPage({ mode, saveSession }) {
   const [form, setForm] = useState({ email: '', nickname: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingSignup, setPendingSignup] = useState(null);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -67,6 +68,12 @@ function AuthPage({ mode, saveSession }) {
       const endpoint = isRegister ? '/auth/register' : '/auth/login';
       const payload = isRegister ? form : { email: form.email, password: form.password };
       const { data } = await api.post(endpoint, payload);
+
+      if (isRegister) {
+        setPendingSignup(data);
+        return;
+      }
+
       saveSession(data);
       navigate('/');
     } catch (requestError) {
@@ -74,6 +81,14 @@ function AuthPage({ mode, saveSession }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const confirmSignupNotice = () => {
+    if (!pendingSignup) return;
+
+    localStorage.setItem('welcomeGuideDismissed', 'true');
+    saveSession(pendingSignup);
+    navigate('/');
   };
 
   return (
@@ -151,7 +166,46 @@ function AuthPage({ mode, saveSession }) {
           <Link to={isRegister ? '/login' : '/register'}>{isRegister ? '로그인' : '회원가입'}</Link>
         </p>
       </section>
+
+      <SignupNoticeModal notice={pendingSignup} onConfirm={confirmSignupNotice} />
     </main>
+  );
+}
+
+function SignupNoticeModal({ notice, onConfirm }) {
+  if (!notice) return null;
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal signup-notice-modal" role="dialog" aria-modal="true" aria-labelledby="signup-notice-title">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">Welcome</p>
+            <h2 id="signup-notice-title">회원가입이 완료되었습니다.</h2>
+          </div>
+        </div>
+
+        <div className="signup-notice-body">
+          <strong>{notice.user?.nickname || '회원'}님, 이용해 주셔서 감사합니다.</strong>
+          <p>
+            시작 자금 100,000,000원이 지급되었습니다. 아래 내용을 확인하신 뒤 모의투자를 시작해 주세요.
+          </p>
+          <ul>
+            <li>매수와 매도는 평일 09:00~15:30에만 가능합니다.</li>
+            <li>장외 시간에는 종목 조회, 포트폴리오 확인, 랭킹 확인만 가능합니다.</li>
+            <li>주가는 장중 약 15분마다 갱신되며, 종가 반영을 위해 15:45까지 갱신될 수 있습니다.</li>
+            <li>차트는 실제 가격 기록이 2회 이상 쌓인 뒤 표시됩니다.</li>
+            <li>본 서비스는 학습용 모의투자이며, 투자 권유나 수익 보장을 의미하지 않습니다.</li>
+          </ul>
+        </div>
+
+        <div className="modal-actions">
+          <button className="primary-button" onClick={onConfirm}>
+            확인했습니다
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
