@@ -65,10 +65,11 @@ function normalizeAssetHistory(row) {
 }
 
 const historyLimits = {
-  '1H': { hours: 1, bucketSeconds: 15 * 60, limit: 24 },
-  '1D': { hours: 24, bucketSeconds: 60 * 60, limit: 24 },
-  '1W': { hours: 24 * 7, bucketSeconds: 7 * 60 * 60, limit: 24 },
-  '1M': { hours: 24 * 31, bucketSeconds: 31 * 60 * 60, limit: 24 },
+  '15M': { bucketSeconds: 15 * 60, limit: 24 },
+  '1H': { bucketSeconds: 60 * 60, limit: 24 },
+  '1D': { bucketSeconds: 24 * 60 * 60, limit: 24 },
+  '1W': { bucketSeconds: 7 * 24 * 60 * 60, limit: 24 },
+  '1M': { bucketSeconds: 30 * 24 * 60 * 60, limit: 24 },
 };
 
 export function createMysqlStore(pool) {
@@ -229,8 +230,8 @@ export function createMysqlStore(pool) {
       return rows[0] ? normalizeStock(rows[0]) : null;
     },
 
-    async getStockPriceHistory(code, period = '1M') {
-      const config = historyLimits[period] || historyLimits['1M'];
+    async getStockPriceHistory(code, period = '15M') {
+      const config = historyLimits[period] || historyLimits['15M'];
       const [rows] = await pool.execute(
         `SELECT stock_code, stock_name, sector, price, recorded_at
          FROM (
@@ -242,7 +243,6 @@ export function createMysqlStore(pool) {
              MIN(recorded_at) AS recorded_at
            FROM stock_price_history
            WHERE stock_code = ?
-             AND recorded_at >= DATE_SUB(NOW(), INTERVAL ${config.hours} HOUR)
            GROUP BY stock_code, stock_name, sector, UNIX_TIMESTAMP(recorded_at) DIV ?
            ORDER BY recorded_at DESC
            LIMIT ${config.limit}

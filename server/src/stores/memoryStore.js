@@ -60,6 +60,7 @@ function normalizeAssetHistory(item) {
 }
 
 const historyLimits = {
+  '15M': 24,
   '1H': 24,
   '1D': 24,
   '1W': 24,
@@ -134,8 +135,8 @@ export function createMemoryStore() {
       return stockPrices.get(code) || null;
     },
 
-    async getStockPriceHistory(code, period = '1M') {
-      const limit = historyLimits[period] || historyLimits['1M'];
+    async getStockPriceHistory(code, period = '15M') {
+      const limit = historyLimits[period] || historyLimits['15M'];
       return (stockPriceHistory.get(code) || []).slice(-limit);
     },
 

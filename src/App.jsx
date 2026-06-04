@@ -18,10 +18,11 @@ const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
 const BRAND_SHORT = '모의투자 시뮬레이터';
 
 const PERIODS = [
-  { key: '1H', label: '1시간', points: 24, stepMs: 2.5 * 60 * 1000, drift: 0.004 },
-  { key: '1D', label: '1일', points: 24, stepMs: 60 * 60 * 1000, drift: 0.018 },
-  { key: '1W', label: '1주', points: 24, stepMs: 7 * 60 * 60 * 1000, drift: 0.045 },
-  { key: '1M', label: '1달', points: 24, stepMs: 31 * 60 * 60 * 1000, drift: 0.09 },
+  { key: '15M', label: '15분', points: 24, stepMs: 15 * 60 * 1000, drift: 0.006 },
+  { key: '1H', label: '1시간', points: 24, stepMs: 60 * 60 * 1000, drift: 0.018 },
+  { key: '1D', label: '1일', points: 24, stepMs: 24 * 60 * 60 * 1000, drift: 0.055 },
+  { key: '1W', label: '1주', points: 24, stepMs: 7 * 24 * 60 * 60 * 1000, drift: 0.12 },
+  { key: '1M', label: '1달', points: 24, stepMs: 30 * 24 * 60 * 60 * 1000, drift: 0.2 },
 ];
 
 function useAuth() {
@@ -400,7 +401,7 @@ function Dashboard({ logout }) {
   const [query, setQuery] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [selectedCode, setSelectedCode] = useState('');
-  const [period, setPeriod] = useState('1D');
+  const [period, setPeriod] = useState('15M');
   const [priceHistory, setPriceHistory] = useState([]);
   const [message, setMessage] = useState('');
   const [loadError, setLoadError] = useState('');
