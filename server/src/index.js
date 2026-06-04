@@ -12,6 +12,7 @@ import { createMysqlStore } from './stores/mysqlStore.js';
 
 const app = express();
 const port = Number(process.env.PORT || 4000);
+const host = process.env.API_HOST || '127.0.0.1';
 const isProduction = process.env.NODE_ENV === 'production';
 const allowAfterHoursTrading = process.env.ALLOW_AFTER_HOURS_TRADING === 'true';
 const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-me';
@@ -574,6 +575,6 @@ app.use((error, req, res, next) => {
   res.status(500).json({ message: '서버 오류가 발생했습니다.' });
 });
 
-app.listen(port, () => {
-  console.log(`API server listening on http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`API server listening on http://${host}:${port}`);
 });
