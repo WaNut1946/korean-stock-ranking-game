@@ -9,6 +9,7 @@ import {
   KeyRound,
   Lock,
   LogOut,
+  Megaphone,
   RefreshCw,
   Search,
   ShieldCheck,
@@ -174,6 +175,11 @@ function AuthPage({ mode, saveSession }) {
           {isRegister ? '이미 계정이 있나요?' : '처음 오셨나요?'}{' '}
           <Link to={isRegister ? '/login' : '/register'}>{isRegister ? '로그인' : '회원가입'}</Link>
         </p>
+        <div className="auth-links" aria-label="서비스 안내 링크">
+          <Link to="/terms">이용안내</Link>
+          <span aria-hidden="true">·</span>
+          <Link to="/privacy">개인정보 안내</Link>
+        </div>
       </section>
 
       <SignupNoticeModal notice={pendingSignup} onConfirm={confirmSignupNotice} />
@@ -212,6 +218,50 @@ function SignupNoticeModal({ notice, onConfirm }) {
           <button className="primary-button" onClick={onConfirm}>
             확인했습니다
           </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AnnouncementModal({ open, onClose }) {
+  if (!open) return null;
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal announcement-modal" role="dialog" aria-modal="true" aria-labelledby="announcement-title">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">Notice</p>
+            <h2 id="announcement-title">안내 사항</h2>
+          </div>
+          <button className="icon-button subtle" onClick={onClose} title="닫기">
+            <X size={19} />
+          </button>
+        </div>
+
+        <div className="announcement-list">
+          <article>
+            <strong>서비스 운영 안내</strong>
+            <p>
+              본 서비스는 실제 돈을 사용하지 않는 한국 주식 모의투자 시뮬레이터입니다. 투자 권유나 수익 보장을
+              의미하지 않습니다.
+            </p>
+          </article>
+          <article>
+            <strong>거래 가능 시간</strong>
+            <p>매수와 매도는 평일 09:00~15:30에만 가능하며, 그 외 시간에는 조회만 가능합니다.</p>
+          </article>
+          <article>
+            <strong>가격과 차트 데이터</strong>
+            <p>
+              가격은 장중 약 15분 간격으로 갱신됩니다. 차트는 실제 가격 기록이 2회 이상 쌓인 뒤 표시됩니다.
+            </p>
+          </article>
+          <article>
+            <strong>서버 공지</strong>
+            <p>현재 예정된 점검은 없습니다. 추후 점검이나 변경 사항은 이 공지 영역을 통해 안내하겠습니다.</p>
+          </article>
         </div>
       </section>
     </div>
@@ -607,6 +657,7 @@ function Dashboard({ logout }) {
   const [loadError, setLoadError] = useState('');
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -839,6 +890,9 @@ function Dashboard({ logout }) {
           <span className={`status ${marketOpen ? 'open' : 'closed'}`}>
             {portfolio.marketStatus?.label || '조회 전용'}
           </span>
+          <button className="icon-button" onClick={() => setAnnouncementOpen(true)} title="공지사항">
+            <Megaphone size={18} />
+          </button>
           {portfolio.isAdmin && (
             <Link className="icon-button" to="/admin" title="관리자">
               <ShieldCheck size={19} />
@@ -1113,6 +1167,7 @@ function Dashboard({ logout }) {
         onConfirm={confirmTrade}
         loading={tradeLoading}
       />
+      <AnnouncementModal open={announcementOpen} onClose={() => setAnnouncementOpen(false)} />
       <PasswordChangeModal
         open={passwordModalOpen}
         onCancel={closePasswordModal}
@@ -1421,6 +1476,104 @@ function AdminPage({ logout }) {
   );
 }
 
+function InfoPageLayout({ eyebrow, title, children }) {
+  return (
+    <main className="info-shell">
+      <section className="info-page">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            <ChartNoAxesCombined size={25} />
+          </span>
+          <span>
+            <p className="eyebrow">{eyebrow}</p>
+            <strong>{BRAND_NAME}</strong>
+          </span>
+        </div>
+        <h1>{title}</h1>
+        {children}
+        <div className="info-actions">
+          <Link className="secondary-button nav-button" to="/login">
+            로그인
+          </Link>
+          <Link className="primary-button nav-button" to="/register">
+            회원가입
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function TermsPage() {
+  return (
+    <InfoPageLayout eyebrow="Terms" title="이용안내">
+      <section>
+        <h2>서비스 성격</h2>
+        <p>
+          한국 주식 모의투자 시뮬레이터는 실제 돈이 아닌 가상 자산으로 한국 주식 거래를 연습하는 학습용
+          서비스입니다. 본 서비스의 화면, 가격, 랭킹, 수익률은 실제 투자 결과를 보장하지 않습니다.
+        </p>
+      </section>
+      <section>
+        <h2>거래와 가격 데이터</h2>
+        <p>
+          매수와 매도는 평일 09:00~15:30에만 가능하며, 장외 시간에는 조회만 가능합니다. 주가는 외부 API
+          기준으로 장중 약 15분마다 갱신되며, 지연이나 오류가 발생할 수 있습니다.
+        </p>
+      </section>
+      <section>
+        <h2>투자 관련 고지</h2>
+        <p>
+          본 서비스는 투자 권유, 투자 자문, 수익 보장을 목적으로 하지 않습니다. 실제 투자 결정에는 사용자의
+          독립적인 판단과 책임이 필요합니다.
+        </p>
+      </section>
+      <section>
+        <h2>운영 안내</h2>
+        <p>
+          서비스는 비영리 학습 및 포트폴리오 목적으로 운영됩니다. 서버 점검, API 장애, 데이터 오류가 발생할 수
+          있으며 필요한 경우 공지사항을 통해 안내하겠습니다.
+        </p>
+      </section>
+    </InfoPageLayout>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <InfoPageLayout eyebrow="Privacy" title="개인정보 안내">
+      <section>
+        <h2>수집하는 정보</h2>
+        <p>
+          회원가입과 서비스 이용을 위해 이메일, 닉네임, 비밀번호 해시, 보유 종목, 거래 내역, 자산 기록을
+          저장합니다. 비밀번호 원문은 저장하지 않습니다.
+        </p>
+      </section>
+      <section>
+        <h2>이용 목적</h2>
+        <p>
+          수집 정보는 로그인, 계정 관리, 포트폴리오 계산, 랭킹 표시, 운영 상태 확인을 위해 사용됩니다. 관리자
+          콘솔에서는 서비스 운영 확인 목적으로 일부 계정 및 거래 정보를 볼 수 있습니다.
+        </p>
+      </section>
+      <section>
+        <h2>보관과 삭제</h2>
+        <p>
+          회원탈퇴 시 계정, 보유 종목, 거래 내역, 자산 기록은 삭제됩니다. 단, 서버 백업 파일에는 일정 기간
+          이전 데이터가 남아 있을 수 있으며 백업 보관 정책에 따라 정리됩니다.
+        </p>
+      </section>
+      <section>
+        <h2>보안</h2>
+        <p>
+          서버는 HTTPS를 사용하며, 데이터베이스와 API는 외부에서 직접 접근하지 못하도록 제한했습니다. 계정 보호를
+          위해 비밀번호 변경과 로그인 실패 제한 기능을 제공합니다.
+        </p>
+      </section>
+    </InfoPageLayout>
+  );
+}
+
 export default function App() {
   const auth = useAuth();
 
@@ -1428,6 +1581,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<AuthPage mode="login" saveSession={auth.saveSession} />} />
       <Route path="/register" element={<AuthPage mode="register" saveSession={auth.saveSession} />} />
+      <Route path="/terms" element={<TermsPage />} />
+      <Route path="/privacy" element={<PrivacyPage />} />
       <Route
         path="/admin"
         element={auth.user ? <AdminPage logout={auth.logout} /> : <Navigate to="/login" replace />}
