@@ -911,6 +911,29 @@ textarea {
   gap: 6px;
 }
 
+.holding-sort-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.holding-sort-tabs button {
+  min-height: 32px;
+  border: 1px solid #cfd8e3;
+  background: #fff;
+  color: #344054;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.holding-sort-tabs button.active {
+  border-color: #1f6f8b;
+  background: #1f6f8b;
+  color: #fff;
+}
+
 .ranking-tabs button {
   min-height: 32px;
   border: 1px solid #cfd8e3;

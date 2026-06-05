@@ -762,6 +762,7 @@ function Dashboard({ logout }) {
   const [trades, setTrades] = useState([]);
   const [tradeFilter, setTradeFilter] = useState('ALL');
   const [tradeQuery, setTradeQuery] = useState('');
+  const [holdingSort, setHoldingSort] = useState('default');
   const [assetHistory, setAssetHistory] = useState([]);
   const [query, setQuery] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -819,6 +820,18 @@ function Dashboard({ logout }) {
       return matchesType && matchesKeyword;
     });
   }, [trades, tradeFilter, tradeQuery]);
+
+  const sortedHoldings = useMemo(() => {
+    const holdings = portfolio?.holdings || [];
+    return [...holdings].sort((a, b) => {
+      if (holdingSort === 'profit') return Number(b.profitLoss) - Number(a.profitLoss);
+      if (holdingSort === 'value') {
+        return Number(b.currentPrice) * Number(b.quantity) - Number(a.currentPrice) * Number(a.quantity);
+      }
+      if (holdingSort === 'name') return a.stockName.localeCompare(b.stockName, 'ko-KR');
+      return 0;
+    });
+  }, [portfolio?.holdings, holdingSort]);
 
   const load = async () => {
     const [portfolioResponse, stocksResponse, rankingResponse] = await Promise.all([
@@ -1255,6 +1268,23 @@ function Dashboard({ logout }) {
         <section className="panel">
           <div className="panel-heading">
             <h2>내 포트폴리오</h2>
+            <div className="holding-sort-tabs" aria-label="보유 종목 정렬">
+              {[
+                { key: 'default', label: '기본' },
+                { key: 'profit', label: '손익순' },
+                { key: 'value', label: '보유금액순' },
+                { key: 'name', label: '종목명순' },
+              ].map((item) => (
+                <button
+                  className={holdingSort === item.key ? 'active' : ''}
+                  key={item.key}
+                  onClick={() => setHoldingSort(item.key)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="table holdings-table">
             <div className="row head">
@@ -1265,7 +1295,7 @@ function Dashboard({ logout }) {
               <span>평가손익</span>
               <span>동작</span>
             </div>
-            {portfolio.holdings.map((holding) => (
+            {sortedHoldings.map((holding) => (
               <div className="row" key={holding.stockCode}>
                 <span>
                   <strong>{holding.stockName}</strong>
