@@ -785,6 +785,7 @@ function Dashboard({ logout }) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [showWelcomeGuide, setShowWelcomeGuide] = useState(
     () => localStorage.getItem('welcomeGuideDismissed') !== 'true',
   );
@@ -1112,15 +1113,51 @@ function Dashboard({ logout }) {
               <ShieldCheck size={19} />
             </Link>
           )}
-          <button className="icon-button" onClick={() => setPasswordModalOpen(true)} title="비밀번호 변경">
-            <KeyRound size={18} />
-          </button>
-          <button className="icon-button danger-icon" onClick={() => setDeleteModalOpen(true)} title="회원탈퇴">
-            <Trash2 size={18} />
-          </button>
-          <button className="icon-button" onClick={logout} title="로그아웃">
-            <LogOut size={19} />
-          </button>
+          <div className="account-menu">
+            <button
+              className="account-menu-trigger"
+              onClick={() => setAccountMenuOpen((current) => !current)}
+              type="button"
+            >
+              <span>{portfolio.user?.nickname?.slice(0, 1) || '내'}</span>
+              <strong>{portfolio.user?.nickname || '내 계정'}</strong>
+            </button>
+            {accountMenuOpen && (
+              <div className="account-menu-popover">
+                <button
+                  onClick={() => {
+                    setPasswordModalOpen(true);
+                    setAccountMenuOpen(false);
+                  }}
+                  type="button"
+                >
+                  <KeyRound size={17} />
+                  비밀번호 변경
+                </button>
+                <button
+                  className="danger"
+                  onClick={() => {
+                    setDeleteModalOpen(true);
+                    setAccountMenuOpen(false);
+                  }}
+                  type="button"
+                >
+                  <Trash2 size={17} />
+                  회원탈퇴
+                </button>
+                <button
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    logout();
+                  }}
+                  type="button"
+                >
+                  <LogOut size={17} />
+                  로그아웃
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
