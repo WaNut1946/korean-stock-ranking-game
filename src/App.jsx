@@ -330,6 +330,10 @@ function StockChart({ stock, period, setPeriod, history }) {
   }) : [];
   const points = plottedPoints.map((item) => `${item.x},${item.y}`).join(' ');
   const fillPoints = `24,184 ${points} 576,184`;
+  const tooltipLeftPercent = hoveredPoint
+    ? Math.min(Math.max((hoveredPoint.x / 600) * 100, 13), 87)
+    : 50;
+  const tooltipTopPercent = hoveredPoint ? (hoveredPoint.y / 210) * 100 : 50;
   const updateHoveredPoint = (event) => {
     if (!hasEnoughHistory || plottedPoints.length === 0 || !chartSvgRef.current) return;
 
@@ -433,8 +437,8 @@ function StockChart({ stock, period, setPeriod, history }) {
           <div
             className="chart-tooltip"
             style={{
-              left: `${(hoveredPoint.x / 600) * 100}%`,
-              top: `${(hoveredPoint.y / 210) * 100}%`,
+              left: `${tooltipLeftPercent}%`,
+              top: `${tooltipTopPercent}%`,
             }}
           >
             <strong>{formatWon(hoveredPoint.price)}</strong>
