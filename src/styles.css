@@ -548,14 +548,14 @@ textarea {
   grid-template-columns: minmax(310px, 0.95fr) minmax(390px, 1.35fr) minmax(285px, 0.88fr);
   gap: 16px;
   align-items: stretch;
-  min-height: 540px;
+  min-height: 600px;
 }
 
 .stock-list-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  height: 540px;
-  max-height: 540px;
+  height: 600px;
+  max-height: 600px;
 }
 
 .search-box.full {
@@ -616,8 +616,8 @@ textarea {
 .chart-main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  height: 540px;
-  min-height: 540px;
+  height: 600px;
+  min-height: 600px;
 }
 
 .chart-heading {
@@ -755,8 +755,8 @@ textarea {
   display: grid;
   align-content: start;
   gap: 8px;
-  height: 540px;
-  max-height: 540px;
+  height: 600px;
+  max-height: 600px;
   overflow: visible;
 }
 
