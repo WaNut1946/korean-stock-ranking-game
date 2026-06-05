@@ -18,6 +18,9 @@ const allowAfterHoursTrading = process.env.ALLOW_AFTER_HOURS_TRADING === 'true';
 const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-me';
 const priceRefreshIntervalMinutes = 15;
 const serverStartedAt = new Date();
+const maxLoginFailures = 5;
+const loginLockMinutes = 2;
+const loginFailures = new Map();
 const adminEmails = new Set(
   String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
     .split(',')
@@ -194,6 +197,39 @@ function toPublicUser(user) {
     cashBalance: Number(user.cash_balance),
     createdAt: user.created_at,
   };
+}
+
+function getLoginLock(email) {
+  const record = loginFailures.get(email);
+
+  if (!record?.lockedUntil) return null;
+
+  if (record.lockedUntil <= Date.now()) {
+    loginFailures.delete(email);
+    return null;
+  }
+
+  const remainingSeconds = Math.ceil((record.lockedUntil - Date.now()) / 1000);
+  return {
+    remainingSeconds,
+    remainingMinutes: Math.ceil(remainingSeconds / 60),
+  };
+}
+
+function recordLoginFailure(email) {
+  const current = loginFailures.get(email) || { count: 0, lockedUntil: null };
+  const nextCount = current.count + 1;
+  const nextRecord = {
+    count: nextCount,
+    lockedUntil: nextCount >= maxLoginFailures ? Date.now() + loginLockMinutes * 60 * 1000 : null,
+  };
+
+  loginFailures.set(email, nextRecord);
+  return nextRecord;
+}
+
+function clearLoginFailures(email) {
+  loginFailures.delete(email);
 }
 
 function requireTradingOpen(req, res, next) {
@@ -376,11 +412,34 @@ app.post('/auth/login', async (req, res, next) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
+    const lock = getLoginLock(email);
+
+    if (lock) {
+      return res.status(429).json({
+        message: `로그인 시도가 일시적으로 제한되었습니다. 약 ${lock.remainingMinutes}분 후 다시 시도해 주세요.`,
+        remainingSeconds: lock.remainingSeconds,
+      });
+    }
+
     const user = await store.findUserByEmail(email);
 
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-      return res.status(401).json({ message: '이메일 또는 비밀번호가 올바르지 않습니다.' });
+      const failure = recordLoginFailure(email);
+      const remainingAttempts = Math.max(maxLoginFailures - failure.count, 0);
+
+      if (failure.lockedUntil) {
+        return res.status(429).json({
+          message: `비밀번호를 ${maxLoginFailures}회 틀려 2분 동안 로그인이 제한됩니다.`,
+          remainingSeconds: loginLockMinutes * 60,
+        });
+      }
+
+      return res.status(401).json({
+        message: `이메일 또는 비밀번호가 올바르지 않습니다. 남은 시도 ${remainingAttempts}회`,
+      });
     }
+
+    clearLoginFailures(email);
 
     return res.json({
       token: signToken(user),
