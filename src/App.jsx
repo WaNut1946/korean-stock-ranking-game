@@ -24,6 +24,11 @@ import { formatDateTime, formatPercent, formatWon } from './format.js';
 
 const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
 const BRAND_SHORT = '모의투자 시뮬레이터';
+const ANNOUNCEMENT_SKIP_DATE_KEY = 'announcementSkipDate';
+
+function getTodayKey() {
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+}
 
 const PERIODS = [
   { key: '15M', label: '15분', points: 24, stepMs: 15 * 60 * 1000, drift: 0.006 },
@@ -224,7 +229,7 @@ function SignupNoticeModal({ notice, onConfirm }) {
   );
 }
 
-function AnnouncementModal({ open, onClose, announcements, loading }) {
+function AnnouncementModal({ open, onClose, announcements, loading, showSkipToday, skipToday, onSkipTodayChange }) {
   if (!open) return null;
 
   const fallbackAnnouncements = [
@@ -271,6 +276,17 @@ function AnnouncementModal({ open, onClose, announcements, loading }) {
               </article>
             ))}
         </div>
+
+        {showSkipToday && (
+          <label className="checkbox-line announcement-skip">
+            <input
+              type="checkbox"
+              checked={skipToday}
+              onChange={(event) => onSkipTodayChange(event.target.checked)}
+            />
+            오늘 하루 자동으로 띄우지 않기
+          </label>
+        )}
       </section>
     </div>
   );
@@ -668,6 +684,8 @@ function Dashboard({ logout }) {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [announcementAutoOpened, setAnnouncementAutoOpened] = useState(false);
+  const [skipAnnouncementToday, setSkipAnnouncementToday] = useState(false);
   const [announcements, setAnnouncements] = useState([]);
   const [announcementsLoading, setAnnouncementsLoading] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
@@ -748,8 +766,10 @@ function Dashboard({ logout }) {
       .catch(() => setPriceHistory([]));
   }, [selectedStock?.code, period]);
 
-  const openAnnouncements = async () => {
+  const openAnnouncements = async ({ automatic = false } = {}) => {
     setAnnouncementOpen(true);
+    setAnnouncementAutoOpened(automatic);
+    setSkipAnnouncementToday(false);
     setAnnouncementsLoading(true);
 
     try {
@@ -765,9 +785,21 @@ function Dashboard({ logout }) {
   useEffect(() => {
     if (!location.state?.openAnnouncements) return;
 
-    openAnnouncements();
+    if (localStorage.getItem(ANNOUNCEMENT_SKIP_DATE_KEY) !== getTodayKey()) {
+      openAnnouncements({ automatic: true });
+    }
     navigate('/', { replace: true, state: {} });
   }, [location.state?.openAnnouncements]);
+
+  const closeAnnouncements = () => {
+    if (announcementAutoOpened && skipAnnouncementToday) {
+      localStorage.setItem(ANNOUNCEMENT_SKIP_DATE_KEY, getTodayKey());
+    }
+
+    setAnnouncementOpen(false);
+    setAnnouncementAutoOpened(false);
+    setSkipAnnouncementToday(false);
+  };
 
   const openOrder = (type) => {
     if (!selectedStock) return;
@@ -1202,9 +1234,12 @@ function Dashboard({ logout }) {
       />
       <AnnouncementModal
         open={announcementOpen}
-        onClose={() => setAnnouncementOpen(false)}
+        onClose={closeAnnouncements}
         announcements={announcements}
         loading={announcementsLoading}
+        showSkipToday={announcementAutoOpened}
+        skipToday={skipAnnouncementToday}
+        onSkipTodayChange={setSkipAnnouncementToday}
       />
       <PasswordChangeModal
         open={passwordModalOpen}

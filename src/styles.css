@@ -1309,6 +1309,14 @@ textarea {
   min-height: 18px;
 }
 
+.announcement-skip {
+  margin-top: 2px;
+  border-top: 1px solid #eef2f6;
+  padding-top: 12px;
+  color: #475467;
+  font-weight: 800;
+}
+
 .admin-announcement-list {
   display: grid;
   gap: 10px;
