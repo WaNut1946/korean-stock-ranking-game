@@ -187,6 +187,13 @@ export function createMemoryStore() {
       }
     },
 
+    async updateUserPassword(userId, passwordHash) {
+      const user = users.find((item) => item.id === Number(userId));
+      if (user) {
+        user.password_hash = passwordHash;
+      }
+    },
+
     async getAllUserIds() {
       return users.map((user) => user.id);
     },

@@ -266,6 +266,10 @@ export function createMysqlStore(pool) {
       await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
     },
 
+    async updateUserPassword(userId, passwordHash) {
+      await pool.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+    },
+
     async getAllUserIds() {
       const [rows] = await pool.execute('SELECT id FROM users');
       return rows.map((row) => row.id);

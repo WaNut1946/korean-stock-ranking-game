@@ -410,6 +410,31 @@ app.delete('/auth/me', requireAuth, requireActiveUser, async (req, res, next) =>
   }
 });
 
+app.patch('/auth/password', requireAuth, requireActiveUser, async (req, res, next) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || '');
+    const newPassword = String(req.body.newPassword || '');
+
+    if (!currentPassword || newPassword.length < 6) {
+      return res.status(400).json({ message: '현재 비밀번호와 6자 이상의 새 비밀번호를 입력해 주세요.' });
+    }
+
+    if (!(await bcrypt.compare(currentPassword, req.activeUser.password_hash))) {
+      return res.status(401).json({ message: '현재 비밀번호가 올바르지 않습니다.' });
+    }
+
+    if (await bcrypt.compare(newPassword, req.activeUser.password_hash)) {
+      return res.status(400).json({ message: '새 비밀번호는 현재 비밀번호와 달라야 합니다.' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await store.updateUserPassword(req.activeUser.id, passwordHash);
+    return res.json({ message: '비밀번호가 변경되었습니다.' });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.get('/stocks', async (req, res, next) => {
   try {
     const keyword = String(req.query.q || '').trim().toLowerCase();

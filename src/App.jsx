@@ -6,6 +6,7 @@ import {
   Clock3,
   Database,
   Home,
+  KeyRound,
   Lock,
   LogOut,
   RefreshCw,
@@ -443,6 +444,87 @@ function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading })
   );
 }
 
+function PasswordChangeModal({ open, onCancel, onConfirm, loading, error, message }) {
+  const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+  useEffect(() => {
+    if (open) {
+      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const passwordsMatch = form.newPassword && form.newPassword === form.confirmPassword;
+  const canSubmit = form.currentPassword && form.newPassword.length >= 6 && passwordsMatch;
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal account-modal" role="dialog" aria-modal="true" aria-labelledby="change-password-title">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">Account</p>
+            <h2 id="change-password-title">비밀번호 변경</h2>
+          </div>
+          <button className="icon-button subtle" onClick={onCancel} title="닫기" disabled={loading}>
+            <X size={19} />
+          </button>
+        </div>
+
+        <div className="account-help">
+          현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다. 새 비밀번호는 6자 이상이어야 합니다.
+        </div>
+
+        <div className="account-form-grid">
+          <label>
+            현재 비밀번호
+            <input
+              type="password"
+              value={form.currentPassword}
+              onChange={(event) => setForm({ ...form, currentPassword: event.target.value })}
+              autoFocus
+              disabled={loading}
+            />
+          </label>
+          <label>
+            새 비밀번호
+            <input
+              type="password"
+              minLength={6}
+              value={form.newPassword}
+              onChange={(event) => setForm({ ...form, newPassword: event.target.value })}
+              disabled={loading}
+            />
+          </label>
+          <label>
+            새 비밀번호 확인
+            <input
+              type="password"
+              minLength={6}
+              value={form.confirmPassword}
+              onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
+              disabled={loading}
+            />
+          </label>
+        </div>
+
+        {form.confirmPassword && !passwordsMatch && <p className="error">새 비밀번호가 서로 일치하지 않습니다.</p>}
+        {error && <p className="error">{error}</p>}
+        {message && <p className="notice">{message}</p>}
+
+        <div className="modal-actions">
+          <button className="secondary-button" onClick={onCancel} disabled={loading}>
+            닫기
+          </button>
+          <button className="primary-button" onClick={() => onConfirm(form)} disabled={loading || !canSubmit}>
+            {loading ? '변경 중' : '비밀번호 변경'}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function AccountDeleteModal({ open, onCancel, onConfirm, loading, error }) {
   const [password, setPassword] = useState('');
 
@@ -518,6 +600,10 @@ function Dashboard({ logout }) {
   const [loadError, setLoadError] = useState('');
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -653,6 +739,36 @@ function Dashboard({ logout }) {
     setDeleteError('');
   };
 
+  const closePasswordModal = () => {
+    if (passwordLoading) return;
+    setPasswordModalOpen(false);
+    setPasswordError('');
+    setPasswordMessage('');
+  };
+
+  const confirmPasswordChange = async (form) => {
+    setPasswordLoading(true);
+    setPasswordError('');
+    setPasswordMessage('');
+
+    try {
+      const { data } = await api.patch('/auth/password', {
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+      });
+      setPasswordMessage(data.message || '비밀번호가 변경되었습니다.');
+    } catch (error) {
+      if (error.response?.status === 401 && !error.response?.data?.message) {
+        logout();
+        return;
+      }
+
+      setPasswordError(error.response?.data?.message || '비밀번호를 변경하지 못했습니다.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   const confirmDeleteAccount = async (password) => {
     setDeleteLoading(true);
     setDeleteError('');
@@ -721,6 +837,9 @@ function Dashboard({ logout }) {
               <ShieldCheck size={19} />
             </Link>
           )}
+          <button className="icon-button" onClick={() => setPasswordModalOpen(true)} title="비밀번호 변경">
+            <KeyRound size={18} />
+          </button>
           <button className="icon-button danger-icon" onClick={() => setDeleteModalOpen(true)} title="회원탈퇴">
             <Trash2 size={18} />
           </button>
@@ -986,6 +1105,14 @@ function Dashboard({ logout }) {
         onCancel={() => setPendingOrder(null)}
         onConfirm={confirmTrade}
         loading={tradeLoading}
+      />
+      <PasswordChangeModal
+        open={passwordModalOpen}
+        onCancel={closePasswordModal}
+        onConfirm={confirmPasswordChange}
+        loading={passwordLoading}
+        error={passwordError}
+        message={passwordMessage}
       />
       <AccountDeleteModal
         open={deleteModalOpen}

@@ -1422,6 +1422,20 @@ input {
   line-height: 1.55;
 }
 
+.account-help {
+  border: 1px solid #bfd8e6;
+  border-radius: 6px;
+  background: #eaf6fb;
+  color: #174f67;
+  padding: 12px;
+  line-height: 1.55;
+}
+
+.account-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
 .modal-actions {
   justify-content: flex-end;
 }
