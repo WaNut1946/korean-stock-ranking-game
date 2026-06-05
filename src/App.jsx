@@ -24,7 +24,7 @@ import { formatDateTime, formatPercent, formatWon } from './format.js';
 
 const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
 const BRAND_SHORT = '모의투자 시뮬레이터';
-const SUPPORT_EMAIL = 'kkh306079@naver.com';
+const SUPPORT_EMAIL = 'anttradersim@gmail.com';
 const ANNOUNCEMENT_SKIP_DATE_KEY = 'announcementSkipDate';
 const BUY_FEE_RATE = 0.00015;
 const SELL_FEE_RATE = 0.00015;
