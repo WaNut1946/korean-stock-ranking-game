@@ -30,6 +30,49 @@ const ANNOUNCEMENT_SKIP_DATE_KEY = 'announcementSkipDate';
 const BUY_FEE_RATE = 0.00015;
 const SELL_FEE_RATE = 0.00015;
 const SELL_TAX_RATE = 0.0018;
+const BETA_CHECKLIST_STORAGE_KEY = 'betaLaunchChecklist';
+const BETA_CHECKLIST = [
+  {
+    group: '계정',
+    items: [
+      { id: 'register-login', label: '새 계정 회원가입, 로그인, 로그아웃 확인' },
+      { id: 'password-change', label: '비밀번호 변경 후 재로그인 확인' },
+      { id: 'delete-account', label: '테스트 계정 회원탈퇴 확인' },
+    ],
+  },
+  {
+    group: '거래',
+    items: [
+      { id: 'trade-window', label: '장중 매수/매도 가능, 장외 거래 차단 확인' },
+      { id: 'portfolio-balance', label: '매수/매도 후 현금, 보유 종목, 총자산 반영 확인' },
+      { id: 'trade-history', label: '거래내역 필터와 검색 확인' },
+    ],
+  },
+  {
+    group: '가격/차트',
+    items: [
+      { id: 'kis-refresh', label: 'KIS 가격 갱신 성공/실패 로그 확인' },
+      { id: 'chart-history', label: '가격 기록 누적 후 차트와 터치 툴팁 확인' },
+      { id: 'ranking', label: 'TOP10 랭킹과 내 순위 반영 확인' },
+    ],
+  },
+  {
+    group: '운영',
+    items: [
+      { id: 'notice', label: '공지 작성, 수정, 숨김, 삭제 확인' },
+      { id: 'backup', label: 'DB 백업 파일 생성 및 복원 테스트 확인' },
+      { id: 'ssl-pm2', label: 'HTTPS, PM2 자동시작, Nginx 상태 확인' },
+    ],
+  },
+  {
+    group: '모바일',
+    items: [
+      { id: 'mobile-login', label: '모바일 로그인/회원가입 화면 확인' },
+      { id: 'mobile-dashboard', label: '모바일 대시보드, 종목 선택, 주문 UI 확인' },
+      { id: 'mobile-tables', label: '모바일 포트폴리오, 거래내역, 프로필 메뉴 확인' },
+    ],
+  },
+];
 
 function getTodayKey() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
@@ -1719,6 +1762,16 @@ function AdminPage({ logout }) {
   const [selectedAdminUser, setSelectedAdminUser] = useState(null);
   const [adminUserLoading, setAdminUserLoading] = useState(false);
   const [adminUserError, setAdminUserError] = useState('');
+  const [checkedBetaItems, setCheckedBetaItems] = useState(() => {
+    const raw = localStorage.getItem(BETA_CHECKLIST_STORAGE_KEY);
+    if (!raw) return {};
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  });
 
   const loadStatus = async () => {
     setLoading(true);
@@ -1752,6 +1805,9 @@ function AdminPage({ logout }) {
   const marketStatus = status?.marketStatus || {};
   const server = status?.server || {};
   const failedCount = Number(priceRefresh.failedCount || 0);
+  const betaItems = BETA_CHECKLIST.flatMap((section) => section.items);
+  const checkedBetaCount = betaItems.filter((item) => checkedBetaItems[item.id]).length;
+  const betaProgress = Math.round((checkedBetaCount / betaItems.length) * 100);
   const emptyAnnouncementForm = { title: '', content: '', isVisible: true, isImportant: false };
   const [announcementForm, setAnnouncementForm] = useState(emptyAnnouncementForm);
   const [editingAnnouncementId, setEditingAnnouncementId] = useState(null);
@@ -1851,6 +1907,14 @@ function AdminPage({ logout }) {
     setAdminUserLoading(false);
   };
 
+  const toggleBetaChecklistItem = (itemId) => {
+    setCheckedBetaItems((current) => {
+      const next = { ...current, [itemId]: !current[itemId] };
+      localStorage.setItem(BETA_CHECKLIST_STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
     <main className="app-shell admin-shell">
       <nav className="topbar">
@@ -1890,6 +1954,38 @@ function AdminPage({ logout }) {
             <AdminStatCard icon={<Wallet size={21} />} label="보유 종목" value={`${stats.holdingCount || 0}건`} />
             <AdminStatCard icon={<ArrowDownUp size={21} />} label="전체 거래" value={`${stats.tradeCount || 0}건`} detail={`최근 ${formatDateTime(stats.latestTradeAt)}`} tone="green" />
             <AdminStatCard icon={<Database size={21} />} label="가격 기록" value={`${stats.stockHistoryCount || 0}건`} detail={`최근 ${formatDateTime(stats.latestStockHistoryAt)}`} tone="yellow" />
+          </section>
+
+          <section className="panel beta-checklist-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>베타 오픈 점검표</h2>
+                <span className="muted">관리자 브라우저에 체크 상태가 저장됩니다.</span>
+              </div>
+              <strong className="beta-progress">
+                {checkedBetaCount} / {betaItems.length} 완료 · {betaProgress}%
+              </strong>
+            </div>
+            <div className="beta-progress-bar" aria-hidden="true">
+              <span style={{ width: `${betaProgress}%` }} />
+            </div>
+            <div className="beta-checklist-grid">
+              {BETA_CHECKLIST.map((section) => (
+                <section className="beta-checklist-group" key={section.group}>
+                  <h3>{section.group}</h3>
+                  {section.items.map((item) => (
+                    <label className="beta-checklist-item" key={item.id}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(checkedBetaItems[item.id])}
+                        onChange={() => toggleBetaChecklistItem(item.id)}
+                      />
+                      <span>{item.label}</span>
+                    </label>
+                  ))}
+                </section>
+              ))}
+            </div>
           </section>
 
           <section className="admin-two-column">

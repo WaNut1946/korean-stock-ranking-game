@@ -1318,6 +1318,75 @@ textarea {
   color: #8b5e00;
 }
 
+.beta-checklist-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.beta-progress {
+  color: #1f6f8b;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.beta-progress-bar {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f5;
+}
+
+.beta-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #1f6f8b;
+  transition: width 160ms ease;
+}
+
+.beta-checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.beta-checklist-group {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.beta-checklist-group h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 14px;
+}
+
+.beta-checklist-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.beta-checklist-item input {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 1px;
+}
+
+.beta-checklist-item span {
+  min-width: 0;
+}
+
 .admin-two-column {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
@@ -2156,6 +2225,10 @@ textarea {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .beta-checklist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-two-column,
   .admin-two-column.wide {
     grid-template-columns: 1fr;
@@ -2348,6 +2421,18 @@ textarea {
 
   .admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .beta-checklist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .beta-checklist-panel .panel-heading {
+    gap: 8px;
+  }
+
+  .beta-progress {
+    white-space: normal;
   }
 
   .admin-status-list div {
