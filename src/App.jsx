@@ -1477,6 +1477,16 @@ function AdminPage({ logout }) {
 }
 
 function InfoPageLayout({ eyebrow, title, children }) {
+  const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate('/login');
+  };
+
   return (
     <main className="info-shell">
       <section className="info-page">
@@ -1492,12 +1502,9 @@ function InfoPageLayout({ eyebrow, title, children }) {
         <h1>{title}</h1>
         {children}
         <div className="info-actions">
-          <Link className="secondary-button nav-button" to="/login">
-            로그인
-          </Link>
-          <Link className="primary-button nav-button" to="/register">
-            회원가입
-          </Link>
+          <button className="secondary-button nav-button" onClick={goBack}>
+            돌아가기
+          </button>
         </div>
       </section>
     </main>
