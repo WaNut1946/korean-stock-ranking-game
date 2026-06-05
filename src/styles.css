@@ -2171,10 +2171,12 @@ textarea {
   }
 
   .topbar-actions {
+    justify-content: flex-start;
     width: 100%;
   }
 
   .account-menu {
+    margin-left: auto;
     width: auto;
     max-width: 100%;
   }
