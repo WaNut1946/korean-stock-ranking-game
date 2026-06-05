@@ -765,6 +765,45 @@ textarea {
   margin-bottom: 0;
 }
 
+.info-button {
+  display: inline-grid;
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  place-items: center;
+  border: 1px solid #cfd8e3;
+  border-radius: 6px;
+  background: #fff;
+  color: #1f6f8b;
+}
+
+.info-button:hover {
+  border-color: #1f6f8b;
+  background: #edf8fc;
+}
+
+.trade-guide-box {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #bfd8e6;
+  border-radius: 6px;
+  background: #f4fbfe;
+  color: #344054;
+  padding: 9px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.trade-guide-box strong {
+  color: #174f67;
+  font-size: 13px;
+}
+
+.trade-guide-box p {
+  margin: 0;
+}
+
 .order-panel label {
   gap: 5px;
   font-size: 13px;
