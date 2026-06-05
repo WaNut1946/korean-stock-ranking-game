@@ -352,6 +352,7 @@ function SummaryTile({ icon, label, value, tone }) {
 function StockChart({ stock, period, setPeriod, history }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
   const chartSvgRef = useRef(null);
+  const isPointerInteractingRef = useRef(false);
   const chartPoints = useMemo(() => {
     const historyPoints = history
       .map((item) => ({
@@ -377,9 +378,7 @@ function StockChart({ stock, period, setPeriod, history }) {
   }) : [];
   const points = plottedPoints.map((item) => `${item.x},${item.y}`).join(' ');
   const fillPoints = `24,184 ${points} 576,184`;
-  const tooltipLeftPercent = hoveredPoint
-    ? Math.min(Math.max((hoveredPoint.x / 600) * 100, 13), 87)
-    : 50;
+  const tooltipLeftPercent = hoveredPoint ? (hoveredPoint.x / 600) * 100 : 50;
   const tooltipTopPercent = hoveredPoint ? (hoveredPoint.y / 210) * 100 : 50;
   const updateHoveredPoint = (event) => {
     if (!hasEnoughHistory || plottedPoints.length === 0 || !chartSvgRef.current) return;
@@ -390,6 +389,26 @@ function StockChart({ stock, period, setPeriod, history }) {
       Math.abs(point.x - x) < Math.abs(nearest.x - x) ? point : nearest,
     );
     setHoveredPoint(nearestPoint);
+  };
+  const startChartPointer = (event) => {
+    if (!hasEnoughHistory) return;
+
+    isPointerInteractingRef.current = true;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    updateHoveredPoint(event);
+  };
+  const moveChartPointer = (event) => {
+    if (event.pointerType !== 'mouse' && !isPointerInteractingRef.current) return;
+
+    updateHoveredPoint(event);
+  };
+  const endChartPointer = (event) => {
+    isPointerInteractingRef.current = false;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+
+    if (event.pointerType !== 'mouse') {
+      setHoveredPoint(null);
+    }
   };
 
   if (!stock) {
@@ -418,8 +437,18 @@ function StockChart({ stock, period, setPeriod, history }) {
           role="img"
           aria-label={`${stock.name} 가격 차트`}
           ref={chartSvgRef}
-          onMouseMove={updateHoveredPoint}
-          onMouseLeave={() => setHoveredPoint(null)}
+          onPointerDown={startChartPointer}
+          onPointerMove={moveChartPointer}
+          onPointerUp={endChartPointer}
+          onPointerCancel={endChartPointer}
+          onPointerLeave={(event) => {
+            if (!isPointerInteractingRef.current) {
+              setHoveredPoint(null);
+            }
+            if (event.pointerType === 'mouse') {
+              isPointerInteractingRef.current = false;
+            }
+          }}
         >
           <defs>
             <linearGradient id="stockFill" x1="0" x2="0" y1="0" y2="1">
@@ -484,7 +513,7 @@ function StockChart({ stock, period, setPeriod, history }) {
           <div
             className="chart-tooltip"
             style={{
-              left: `${tooltipLeftPercent}%`,
+              left: `clamp(76px, ${tooltipLeftPercent}%, calc(100% - 76px))`,
               top: `${tooltipTopPercent}%`,
             }}
           >
