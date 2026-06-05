@@ -316,6 +316,8 @@ function StockChart({ stock, period, setPeriod, history }) {
   }, [history]);
 
   const hasEnoughHistory = chartPoints.length >= 2;
+  const historyCount = chartPoints.length;
+  const latestHistory = chartPoints[chartPoints.length - 1];
   const values = hasEnoughHistory ? chartPoints.map((item) => item.price) : [Number(stock?.price || 0)];
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -340,7 +342,9 @@ function StockChart({ stock, period, setPeriod, history }) {
           <h2>
             {stock.name} ({stock.code})
           </h2>
-          <p className="muted">실제 갱신 가격 기록</p>
+          <p className="muted">
+            실제 갱신 가격 기록 · {historyCount >= 1 ? `${historyCount}개 기록` : '기록 대기 중'}
+          </p>
         </div>
         <strong>{formatWon(stock.price)}</strong>
       </div>
@@ -354,6 +358,12 @@ function StockChart({ stock, period, setPeriod, history }) {
             </linearGradient>
           </defs>
           <path className="chart-grid" d="M24 54H576M24 93H576M24 132H576M24 172H576" />
+          {!hasEnoughHistory && (
+            <>
+              <line className="chart-baseline" x1="64" x2="536" y1="112" y2="112" />
+              <circle className="chart-dot ghost" cx="300" cy="112" r="5" />
+            </>
+          )}
           {hasEnoughHistory && <polygon points={fillPoints} fill="url(#stockFill)" />}
           {hasEnoughHistory && <polyline className="chart-line" points={points} />}
           {plottedPoints.map((point) => (
@@ -373,11 +383,20 @@ function StockChart({ stock, period, setPeriod, history }) {
         </svg>
         {!hasEnoughHistory && (
           <div className="chart-empty">
-            <strong>차트 데이터를 쌓는 중입니다.</strong>
+            <strong>{historyCount === 0 ? '아직 저장된 가격 기록이 없습니다.' : '차트를 그리려면 가격 기록이 1개 더 필요합니다.'}</strong>
             <span>
-              장중 가격 갱신이 2회 이상 기록되면 차트가 표시됩니다. 가격 기록은 평일 09:00~15:45에
-              약 15분 간격으로 저장됩니다.
+              가격 기록은 평일 09:00~15:45에 약 15분 간격으로 저장됩니다. 같은 종목의 기록이 2개 이상 쌓이면 실제 변동 차트가 표시됩니다.
             </span>
+            <div className="chart-empty-facts">
+              <span>
+                현재 기록
+                <strong>{historyCount}개</strong>
+              </span>
+              <span>
+                마지막 기록
+                <strong>{latestHistory ? formatDateTime(latestHistory.recordedAt) : '대기 중'}</strong>
+              </span>
+            </div>
           </div>
         )}
         {hoveredPoint && (
