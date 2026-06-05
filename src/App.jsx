@@ -633,6 +633,10 @@ function formatSignedPercent(value) {
   return `${sign}${numeric.toFixed(2)}%`;
 }
 
+function normalizeList(value) {
+  return Array.isArray(value) ? value : [];
+}
+
 function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading }) {
   if (!order) return null;
 
@@ -967,9 +971,9 @@ function Dashboard({ logout }) {
     setSelectedCode((current) => current || stocksResponse.data.stocks[0]?.code || '');
     setRanking(rankingResponse.data.ranking);
     setMyRanking(rankingResponse.data.me);
-    setTrades(tradesResponse.data.trades);
-    setOpenOrders(ordersResponse.data.orders);
-    setAssetHistory(assetHistoryResponse.data.history);
+    setTrades(normalizeList(tradesResponse.data?.trades));
+    setOpenOrders(normalizeList(ordersResponse.data?.orders));
+    setAssetHistory(normalizeList(assetHistoryResponse.data?.history));
   };
 
   useEffect(() => {
@@ -1124,9 +1128,9 @@ function Dashboard({ logout }) {
       ]);
       setRanking(rankingResponse.data.ranking);
       setMyRanking(rankingResponse.data.me);
-      setTrades(tradesResponse.data.trades);
-      setOpenOrders(ordersResponse.data.orders);
-      setAssetHistory(assetHistoryResponse.data.history);
+      setTrades(normalizeList(tradesResponse.data?.trades));
+      setOpenOrders(normalizeList(ordersResponse.data?.orders));
+      setAssetHistory(normalizeList(assetHistoryResponse.data?.history));
       setPendingOrder(null);
       const isOpenOrder = data.orderStatus === 'OPEN';
       if (isOpenOrder) {
@@ -1162,10 +1166,10 @@ function Dashboard({ logout }) {
         api.get('/ranking', { params: { sort: rankingSort } }),
         api.get('/asset-history'),
       ]);
-      setOpenOrders(ordersResponse.data.orders);
+      setOpenOrders(normalizeList(ordersResponse.data?.orders));
       setRanking(rankingResponse.data.ranking);
       setMyRanking(rankingResponse.data.me);
-      setAssetHistory(assetHistoryResponse.data.history);
+      setAssetHistory(normalizeList(assetHistoryResponse.data?.history));
       showToast({ type: 'info', title: '주문 취소', message: '미체결 주문이 취소되었습니다.' });
     } catch (error) {
       showToast({
