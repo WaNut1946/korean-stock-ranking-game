@@ -754,6 +754,7 @@ function Toast({ toast, onClose }) {
 function Dashboard({ logout }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const accountMenuRef = useRef(null);
   const [portfolio, setPortfolio] = useState(null);
   const [stocks, setStocks] = useState([]);
   const [ranking, setRanking] = useState([]);
@@ -931,6 +932,18 @@ function Dashboard({ logout }) {
     const timer = window.setTimeout(() => setToast(null), 4000);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (accountMenuRef.current?.contains(event.target)) return;
+      setAccountMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [accountMenuOpen]);
 
   const openOrder = (type) => {
     if (!selectedStock) return;
@@ -1113,7 +1126,7 @@ function Dashboard({ logout }) {
               <ShieldCheck size={19} />
             </Link>
           )}
-          <div className="account-menu">
+          <div className="account-menu" ref={accountMenuRef}>
             <button
               className="account-menu-trigger"
               onClick={() => setAccountMenuOpen((current) => !current)}
