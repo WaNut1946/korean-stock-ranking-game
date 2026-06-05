@@ -765,6 +765,14 @@ textarea {
   margin-bottom: 0;
 }
 
+.order-heading {
+  position: relative;
+}
+
+.trade-guide-menu {
+  position: relative;
+}
+
 .info-button {
   display: inline-grid;
   width: 32px;
@@ -784,8 +792,13 @@ textarea {
 }
 
 .trade-guide-box {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 8;
   display: grid;
   gap: 5px;
+  width: min(300px, calc(100vw - 36px));
   border: 1px solid #bfd8e6;
   border-radius: 6px;
   background: #f4fbfe;
@@ -793,6 +806,7 @@ textarea {
   padding: 9px 10px;
   font-size: 12px;
   line-height: 1.45;
+  box-shadow: 0 14px 36px rgba(23, 32, 51, 0.16);
 }
 
 .trade-guide-box strong {

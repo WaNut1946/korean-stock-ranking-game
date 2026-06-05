@@ -874,6 +874,7 @@ function Dashboard({ logout }) {
   const location = useLocation();
   const navigate = useNavigate();
   const accountMenuRef = useRef(null);
+  const tradeGuideRef = useRef(null);
   const [portfolio, setPortfolio] = useState(null);
   const [stocks, setStocks] = useState([]);
   const [ranking, setRanking] = useState([]);
@@ -1075,6 +1076,18 @@ function Dashboard({ logout }) {
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [accountMenuOpen]);
+
+  useEffect(() => {
+    if (!tradeGuideOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (tradeGuideRef.current?.contains(event.target)) return;
+      setTradeGuideOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [tradeGuideOpen]);
 
   const openOrder = (type) => {
     if (!selectedStock) return;
@@ -1437,25 +1450,27 @@ function Dashboard({ logout }) {
         <StockChart stock={selectedStock} period={period} setPeriod={setPeriod} history={priceHistory} />
 
         <aside className="panel order-panel">
-          <div className="panel-heading compact">
+          <div className="panel-heading compact order-heading">
             <h2>지금 거래</h2>
-            <button
-              className="info-button"
-              onClick={() => setTradeGuideOpen((current) => !current)}
-              title="주문 안내"
-              type="button"
-            >
-              <Info size={17} />
-            </button>
-          </div>
-          {tradeGuideOpen && (
-            <div className="trade-guide-box">
-              <strong>주문 안내</strong>
-              <p>시장가는 현재 표시 가격으로 바로 주문합니다.</p>
-              <p>지정가는 원하는 가격에 도달하면 자동 체결되며, 체결 전에는 미체결 주문으로 남습니다.</p>
-              <p>수수료는 매수/매도 0.015%, 매도 거래세는 0.18%가 적용됩니다.</p>
+            <div className="trade-guide-menu" ref={tradeGuideRef}>
+              <button
+                className="info-button"
+                onClick={() => setTradeGuideOpen((current) => !current)}
+                title="주문 안내"
+                type="button"
+              >
+                <Info size={17} />
+              </button>
+              {tradeGuideOpen && (
+                <div className="trade-guide-box">
+                  <strong>주문 안내</strong>
+                  <p>시장가는 현재 표시 가격으로 바로 주문합니다.</p>
+                  <p>지정가는 원하는 가격에 도달하면 자동 체결되며, 체결 전에는 미체결 주문으로 남습니다.</p>
+                  <p>수수료는 매수/매도 0.015%, 매도 거래세는 0.18%가 적용됩니다.</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
           <div className={`trade-status-card ${marketOpen ? 'open' : 'closed'}`}>
             <strong>{marketOpen ? '거래 가능' : '조회 전용'}</strong>
             <span>{marketOpen ? '현재 매수와 매도가 가능합니다.' : '매수/매도는 평일 09:00~15:30에 가능합니다.'}</span>
