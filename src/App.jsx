@@ -25,6 +25,9 @@ import { formatDateTime, formatPercent, formatWon } from './format.js';
 const BRAND_NAME = '한국 주식 모의투자 시뮬레이터';
 const BRAND_SHORT = '모의투자 시뮬레이터';
 const ANNOUNCEMENT_SKIP_DATE_KEY = 'announcementSkipDate';
+const BUY_FEE_RATE = 0.00015;
+const SELL_FEE_RATE = 0.00015;
+const SELL_TAX_RATE = 0.0018;
 
 function getTodayKey() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
@@ -33,6 +36,31 @@ function getTodayKey() {
 function wasAnnouncementEdited(announcement) {
   if (!announcement?.createdAt || !announcement?.updatedAt) return false;
   return Math.abs(new Date(announcement.updatedAt).getTime() - new Date(announcement.createdAt).getTime()) > 1000;
+}
+
+function calculateTradeCost({ price, quantity, type }) {
+  const grossAmount = Number(price) * Number(quantity);
+  const feeRate = type === 'sell' ? SELL_FEE_RATE : BUY_FEE_RATE;
+  const fee = Math.round(grossAmount * feeRate);
+  const tax = type === 'sell' ? Math.round(grossAmount * SELL_TAX_RATE) : 0;
+  const settlementAmount = type === 'sell' ? grossAmount - fee - tax : grossAmount + fee;
+
+  return {
+    grossAmount,
+    fee,
+    tax,
+    settlementAmount,
+  };
+}
+
+function getMaxBuyQuantity(cashBalance, price) {
+  if (Number(price) <= 0) return 0;
+
+  let quantity = Math.floor(Number(cashBalance) / (Number(price) * (1 + BUY_FEE_RATE)));
+  while (quantity > 0 && calculateTradeCost({ price, quantity, type: 'buy' }).settlementAmount > Number(cashBalance)) {
+    quantity -= 1;
+  }
+  return Math.max(quantity, 0);
 }
 
 const PERIODS = [
@@ -534,9 +562,9 @@ function formatSignedPercent(value) {
 function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading }) {
   if (!order) return null;
 
-  const totalAmount = order.price * order.quantity;
-  const nextCash = order.type === 'buy' ? cashBalance - totalAmount : cashBalance + totalAmount;
   const isBuy = order.type === 'buy';
+  const tradeCost = calculateTradeCost({ price: order.price, quantity: order.quantity, type: order.type });
+  const nextCash = isBuy ? cashBalance - tradeCost.settlementAmount : cashBalance + tradeCost.settlementAmount;
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -569,7 +597,19 @@ function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading })
           </div>
           <div>
             <span className="muted">총 주문금액</span>
-            <strong>{formatWon(totalAmount)}</strong>
+            <strong>{formatWon(tradeCost.grossAmount)}</strong>
+          </div>
+          <div>
+            <span className="muted">수수료</span>
+            <strong>{formatWon(tradeCost.fee)}</strong>
+          </div>
+          <div>
+            <span className="muted">거래세</span>
+            <strong>{isBuy ? '-' : formatWon(tradeCost.tax)}</strong>
+          </div>
+          <div>
+            <span className="muted">{isBuy ? '총 차감액' : '예상 수령액'}</span>
+            <strong>{formatWon(tradeCost.settlementAmount)}</strong>
           </div>
           <div>
             <span className="muted">현재 현금</span>
@@ -1069,8 +1109,8 @@ function Dashboard({ logout }) {
   const marketOpen = portfolio.marketStatus?.canTrade ?? portfolio.marketStatus?.isOpen;
   const currentQuantity = Math.max(Number(quantity || 0), 0);
   const selectedPrice = Number(selectedStock?.price || 0);
-  const estimatedCost = selectedPrice * currentQuantity;
-  const maxBuyQuantity = selectedPrice > 0 ? Math.floor(portfolio.summary.cashBalance / selectedPrice) : 0;
+  const estimatedCost = calculateTradeCost({ price: selectedPrice, quantity: currentQuantity, type: 'buy' }).settlementAmount;
+  const maxBuyQuantity = getMaxBuyQuantity(portfolio.summary.cashBalance, selectedPrice);
   const maxSellQuantity = selectedHolding?.quantity || 0;
   const rawQuantity = Number(quantity);
   const invalidQuantity = !Number.isInteger(rawQuantity) || rawQuantity <= 0;
@@ -1292,7 +1332,7 @@ function Dashboard({ logout }) {
           <div className="order-metrics">
             <span>현재 가격</span>
             <strong>{formatWon(selectedStock?.price)}</strong>
-            <span>총 추정 비용</span>
+            <span>매수 예상 차감액</span>
             <strong>{formatWon(estimatedCost)}</strong>
             <span>보유 수량</span>
             <strong>{selectedHolding?.quantity?.toLocaleString('ko-KR') || 0}주</strong>

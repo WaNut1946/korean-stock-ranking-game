@@ -1,3 +1,5 @@
+import { calculateTradeCost } from '../tradingRules.js';
+
 const INITIAL_CASH = 100000000;
 
 function normalizeUser(row) {
@@ -473,7 +475,8 @@ export function createMysqlStore(pool) {
         await connection.beginTransaction();
 
         const [[user]] = await connection.execute('SELECT * FROM users WHERE id = ? FOR UPDATE', [userId]);
-        const totalAmount = stock.price * quantity;
+        const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'BUY' });
+        const totalAmount = tradeCost.settlementAmount;
 
         if (!user || Number(user.cash_balance) < totalAmount) {
           throw new Error('INSUFFICIENT_CASH');
@@ -499,7 +502,7 @@ export function createMysqlStore(pool) {
         } else {
           await connection.execute(
             'INSERT INTO holdings (user_id, stock_code, stock_name, quantity, avg_price) VALUES (?, ?, ?, ?, ?)',
-            [userId, stock.code, stock.name, quantity, stock.price],
+            [userId, stock.code, stock.name, quantity, Math.round(totalAmount / quantity)],
           );
         }
 
@@ -532,7 +535,8 @@ export function createMysqlStore(pool) {
           throw new Error('INSUFFICIENT_STOCK');
         }
 
-        const totalAmount = stock.price * quantity;
+        const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'SELL' });
+        const totalAmount = tradeCost.settlementAmount;
         const nextQuantity = Number(holding.quantity) - quantity;
 
         await connection.execute('UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?', [totalAmount, userId]);

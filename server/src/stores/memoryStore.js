@@ -1,3 +1,5 @@
+import { calculateTradeCost } from '../tradingRules.js';
+
 const INITIAL_CASH = 100000000;
 
 let nextUserId = 1;
@@ -351,7 +353,8 @@ export function createMemoryStore() {
 
     async buyStock({ userId, stock, quantity }) {
       const user = await this.findUserById(userId);
-      const totalAmount = stock.price * quantity;
+      const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'BUY' });
+      const totalAmount = tradeCost.settlementAmount;
 
       if (!user || user.cash_balance < totalAmount) {
         throw new Error('INSUFFICIENT_CASH');
@@ -375,7 +378,7 @@ export function createMemoryStore() {
           stock_code: stock.code,
           stock_name: stock.name,
           quantity,
-          avg_price: stock.price,
+          avg_price: Math.round(totalAmount / quantity),
         });
       }
 
@@ -404,7 +407,8 @@ export function createMemoryStore() {
         throw new Error('INSUFFICIENT_STOCK');
       }
 
-      const totalAmount = stock.price * quantity;
+      const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'SELL' });
+      const totalAmount = tradeCost.settlementAmount;
       existing.quantity -= quantity;
       user.cash_balance += totalAmount;
 
