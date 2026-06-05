@@ -1347,8 +1347,13 @@ textarea {
   white-space: pre-wrap;
 }
 
-.admin-announcement-list button {
-  justify-self: end;
+.admin-announcement-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-announcement-actions button {
   min-height: 34px;
   padding: 0 12px;
 }

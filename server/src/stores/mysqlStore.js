@@ -367,6 +367,11 @@ export function createMysqlStore(pool) {
       return rows[0] ? normalizeAnnouncement(rows[0]) : null;
     },
 
+    async deleteAnnouncement(id) {
+      const [result] = await pool.execute('DELETE FROM announcements WHERE id = ?', [id]);
+      return result.affectedRows > 0;
+    },
+
     async getAdminRecentTrades(limit = 30) {
       const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
       const [rows] = await pool.execute(

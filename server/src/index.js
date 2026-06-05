@@ -737,6 +737,26 @@ app.patch('/admin/announcements/:id', requireAuth, requireActiveUser, requireAdm
   }
 });
 
+app.delete('/admin/announcements/:id', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: '공지 ID가 올바르지 않습니다.' });
+    }
+
+    const deleted = await store.deleteAnnouncement(id);
+
+    if (!deleted) {
+      return res.status(404).json({ message: '공지사항을 찾을 수 없습니다.' });
+    }
+
+    return res.json({ message: '공지사항이 삭제되었습니다.' });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.use((error, req, res, next) => {
   if (error.status) {
     return res.status(error.status).json({ message: error.publicMessage || error.message });

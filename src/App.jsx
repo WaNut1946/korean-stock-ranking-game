@@ -245,7 +245,7 @@ function AnnouncementModal({ open, onClose, announcements, loading }) {
       content: '가격은 장중 약 15분 간격으로 갱신됩니다. 차트는 실제 가격 기록이 2회 이상 쌓인 뒤 표시됩니다.',
     },
   ];
-  const visibleAnnouncements = announcements.length > 0 ? announcements : fallbackAnnouncements;
+  const visibleAnnouncements = [...announcements, ...fallbackAnnouncements];
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -1309,6 +1309,19 @@ function AdminPage({ logout }) {
     }
   };
 
+  const deleteAnnouncement = async (announcement) => {
+    if (!window.confirm('공지사항을 삭제하시겠습니까?')) return;
+
+    setAnnouncementError('');
+
+    try {
+      await api.delete(`/admin/announcements/${announcement.id}`);
+      await loadStatus();
+    } catch (error) {
+      setAnnouncementError(error.response?.data?.message || '공지사항을 삭제하지 못했습니다.');
+    }
+  };
+
   return (
     <main className="app-shell admin-shell">
       <nav className="topbar">
@@ -1552,12 +1565,17 @@ function AdminPage({ logout }) {
                       <small>{formatDateTime(announcement.createdAt)}</small>
                     </div>
                     <p>{announcement.content}</p>
-                    <button
-                      className={announcement.isVisible ? 'secondary-button' : 'primary-button'}
-                      onClick={() => toggleAnnouncement(announcement)}
-                    >
-                      {announcement.isVisible ? '숨기기' : '노출'}
-                    </button>
+                    <div className="admin-announcement-actions">
+                      <button
+                        className={announcement.isVisible ? 'secondary-button' : 'primary-button'}
+                        onClick={() => toggleAnnouncement(announcement)}
+                      >
+                        {announcement.isVisible ? '숨기기' : '노출'}
+                      </button>
+                      <button className="danger-button" onClick={() => deleteAnnouncement(announcement)}>
+                        삭제
+                      </button>
+                    </div>
                   </article>
                 ))}
                 {adminAnnouncements.length === 0 && <p className="empty">등록된 공지사항이 없습니다.</p>}

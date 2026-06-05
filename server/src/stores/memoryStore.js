@@ -272,6 +272,14 @@ export function createMemoryStore() {
       return normalizeAnnouncement(announcement);
     },
 
+    async deleteAnnouncement(id) {
+      const announcementIndex = announcements.findIndex((item) => item.id === Number(id));
+      if (announcementIndex === -1) return false;
+
+      announcements.splice(announcementIndex, 1);
+      return true;
+    },
+
     async getAdminRecentTrades(limit = 30) {
       return trades
         .map((trade) => {
