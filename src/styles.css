@@ -1419,8 +1419,91 @@ textarea {
 .user-admin-table .admin-table-row {
   grid-template-columns:
     minmax(170px, 1.2fr) minmax(100px, 0.75fr) minmax(100px, 0.75fr)
-    minmax(110px, 0.8fr) minmax(70px, 0.45fr) 52px minmax(120px, 0.8fr);
-  min-width: 860px;
+    minmax(110px, 0.8fr) minmax(70px, 0.45fr) 52px minmax(120px, 0.8fr) 64px;
+  min-width: 940px;
+}
+
+.admin-user-modal {
+  width: min(920px, 100%);
+}
+
+.admin-user-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-user-profile {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.admin-user-profile span,
+.admin-user-summary span {
+  display: grid;
+  gap: 4px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-user-profile strong,
+.admin-user-summary strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.admin-user-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-user-summary span {
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 12px;
+}
+
+.admin-user-detail h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.admin-detail-list {
+  display: grid;
+  gap: 6px;
+  max-height: 230px;
+  overflow: auto;
+}
+
+.admin-detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 70px minmax(100px, 0.8fr) minmax(100px, 0.8fr);
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #eef2f6;
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.admin-detail-list.trades > div {
+  grid-template-columns: minmax(120px, 0.9fr) 54px minmax(140px, 1fr) minmax(110px, 0.8fr);
+}
+
+.admin-detail-list strong,
+.admin-detail-list small {
+  display: block;
+}
+
+.admin-detail-list small {
+  margin-top: 3px;
+  color: #667085;
 }
 
 .admin-log-list {
@@ -2076,6 +2159,20 @@ textarea {
     left: 0;
     right: auto;
     width: 100%;
+  }
+
+  .admin-user-profile,
+  .admin-user-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-profile {
+    flex-direction: column;
+  }
+
+  .admin-detail-list > div,
+  .admin-detail-list.trades > div {
+    grid-template-columns: 1fr;
   }
 }
 

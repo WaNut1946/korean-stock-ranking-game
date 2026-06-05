@@ -1573,10 +1573,117 @@ function AdminStatCard({ icon, label, value, detail, tone = 'blue' }) {
   );
 }
 
+function AdminUserDetailModal({ detail, loading, error, onClose }) {
+  if (!detail && !loading && !error) return null;
+
+  const user = detail?.user || {};
+  const summary = detail?.summary || {};
+  const holdings = detail?.holdings || [];
+  const trades = detail?.trades || [];
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <section className="modal admin-user-modal" role="dialog" aria-modal="true" aria-labelledby="admin-user-title">
+        <div className="modal-header">
+          <div>
+            <p className="eyebrow">User Detail</p>
+            <h2 id="admin-user-title">{loading ? '유저 정보를 불러오는 중' : `${user.nickname || '유저'} 상세`}</h2>
+          </div>
+          <button className="icon-button subtle" onClick={onClose} title="닫기">
+            <X size={19} />
+          </button>
+        </div>
+
+        {loading && <p className="empty">유저 상세 정보를 불러오는 중입니다.</p>}
+        {error && <p className="error">{error}</p>}
+
+        {!loading && detail && (
+          <div className="admin-user-detail">
+            <div className="admin-user-profile">
+              <span>
+                <strong>{user.nickname}</strong>
+                <small>{user.email}</small>
+              </span>
+              <span>
+                가입일
+                <strong>{formatDateTime(user.createdAt)}</strong>
+              </span>
+            </div>
+
+            <div className="admin-user-summary">
+              <span>
+                현금
+                <strong>{formatWon(summary.cashBalance)}</strong>
+              </span>
+              <span>
+                주식 평가
+                <strong>{formatWon(summary.stockValue)}</strong>
+              </span>
+              <span>
+                총자산
+                <strong>{formatWon(summary.totalAsset)}</strong>
+              </span>
+              <span>
+                수익률
+                <strong className={Number(summary.returnRate || 0) >= 0 ? 'positive' : 'negative'}>
+                  {formatPercent(summary.returnRate)}
+                </strong>
+              </span>
+            </div>
+
+            <section>
+              <h3>보유 종목</h3>
+              <div className="admin-detail-list">
+                {holdings.map((holding) => (
+                  <div key={holding.stockCode}>
+                    <span>
+                      <strong>{holding.stockName}</strong>
+                      <small>{holding.stockCode}</small>
+                    </span>
+                    <span>{holding.quantity.toLocaleString('ko-KR')}주</span>
+                    <span>{formatWon(holding.valuation)}</span>
+                    <span className={Number(holding.profitLoss || 0) >= 0 ? 'positive' : 'negative'}>
+                      {formatWon(holding.profitLoss)}
+                    </span>
+                  </div>
+                ))}
+                {holdings.length === 0 && <p className="empty">보유 종목이 없습니다.</p>}
+              </div>
+            </section>
+
+            <section>
+              <h3>최근 거래</h3>
+              <div className="admin-detail-list trades">
+                {trades.map((trade) => (
+                  <div key={trade.id}>
+                    <span>{formatDateTime(trade.createdAt)}</span>
+                    <span className={trade.type === 'BUY' ? 'trade-buy' : 'trade-sell'}>
+                      {trade.type === 'BUY' ? '매수' : '매도'}
+                    </span>
+                    <span>
+                      <strong>{trade.stockName}</strong>
+                      <small>{trade.stockCode}</small>
+                    </span>
+                    <span>{formatWon(trade.totalAmount)}</span>
+                  </div>
+                ))}
+                {trades.length === 0 && <p className="empty">최근 거래가 없습니다.</p>}
+              </div>
+            </section>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function AdminPage({ logout }) {
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectedAdminUser, setSelectedAdminUser] = useState(null);
+  const [adminUserLoading, setAdminUserLoading] = useState(false);
+  const [adminUserError, setAdminUserError] = useState('');
 
   const loadStatus = async () => {
     setLoading(true);
@@ -1681,6 +1788,32 @@ function AdminPage({ logout }) {
     } catch (error) {
       setAnnouncementError(error.response?.data?.message || '공지사항을 삭제하지 못했습니다.');
     }
+  };
+
+  const loadAdminUserDetail = async (userId) => {
+    setSelectedAdminUser(null);
+    setAdminUserError('');
+    setAdminUserLoading(true);
+
+    try {
+      const { data } = await api.get(`/admin/users/${userId}`);
+      setSelectedAdminUser(data);
+    } catch (requestError) {
+      if (requestError.response?.status === 401) {
+        logout();
+        return;
+      }
+
+      setAdminUserError(requestError.response?.data?.message || '유저 상세 정보를 불러오지 못했습니다.');
+    } finally {
+      setAdminUserLoading(false);
+    }
+  };
+
+  const closeAdminUserDetail = () => {
+    setSelectedAdminUser(null);
+    setAdminUserError('');
+    setAdminUserLoading(false);
   };
 
   return (
@@ -1986,6 +2119,7 @@ function AdminPage({ logout }) {
                 <span>수익률</span>
                 <span>보유</span>
                 <span>가입일</span>
+                <span>동작</span>
               </div>
               {users.map((user) => (
                 <div className="admin-table-row" key={user.userId}>
@@ -2001,6 +2135,9 @@ function AdminPage({ logout }) {
                   </span>
                   <span>{user.holdingCount || 0}건</span>
                   <span>{formatDateTime(user.createdAt)}</span>
+                  <button className="secondary-button" onClick={() => loadAdminUserDetail(user.userId)}>
+                    상세
+                  </button>
                 </div>
               ))}
               {users.length === 0 && <p className="empty">가입한 유저가 없습니다.</p>}
@@ -2008,6 +2145,12 @@ function AdminPage({ logout }) {
           </section>
         </>
       )}
+      <AdminUserDetailModal
+        detail={selectedAdminUser}
+        loading={adminUserLoading}
+        error={adminUserError}
+        onClose={closeAdminUserDetail}
+      />
     </main>
   );
 }

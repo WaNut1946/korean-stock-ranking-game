@@ -696,6 +696,36 @@ app.get('/admin/status', requireAuth, requireActiveUser, requireAdmin, async (re
   }
 });
 
+app.get('/admin/users/:id', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ message: '유저 ID가 올바르지 않습니다.' });
+    }
+
+    const portfolio = await store.getPortfolio(userId);
+
+    if (!portfolio?.user) {
+      return res.status(404).json({ message: '유저를 찾을 수 없습니다.' });
+    }
+
+    const [enrichedPortfolio, trades] = await Promise.all([
+      enrichPortfolio(portfolio),
+      store.getTrades(userId, 30),
+    ]);
+
+    return res.json({
+      user: enrichedPortfolio.user,
+      summary: enrichedPortfolio.summary,
+      holdings: enrichedPortfolio.holdings,
+      trades,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.post('/admin/announcements', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
   try {
     const title = String(req.body.title || '').trim();
