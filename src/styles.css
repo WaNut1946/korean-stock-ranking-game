@@ -417,14 +417,14 @@ textarea {
   grid-template-columns: minmax(310px, 0.95fr) minmax(390px, 1.35fr) minmax(285px, 0.88fr);
   gap: 16px;
   align-items: stretch;
-  min-height: 500px;
+  min-height: 540px;
 }
 
 .stock-list-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  height: 500px;
-  max-height: 500px;
+  height: 540px;
+  max-height: 540px;
 }
 
 .search-box.full {
@@ -480,8 +480,8 @@ textarea {
 .chart-main {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  height: 500px;
-  min-height: 500px;
+  height: 540px;
+  min-height: 540px;
 }
 
 .chart-heading {
@@ -616,14 +616,14 @@ textarea {
 .order-panel {
   display: grid;
   align-content: start;
-  gap: 12px;
-  height: 500px;
-  max-height: 500px;
-  overflow: hidden;
+  gap: 8px;
+  height: 540px;
+  max-height: 540px;
+  overflow: visible;
 }
 
 .panel-heading.compact {
-  min-height: 32px;
+  min-height: 26px;
   margin-bottom: 0;
 }
 
@@ -633,28 +633,28 @@ textarea {
 }
 
 .order-panel input {
-  min-height: 36px;
+  min-height: 32px;
 }
 
 .trade-status-card {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   border: 1px solid #d8e6de;
   border-radius: 6px;
   background: #f0fdf4;
-  padding: 9px 10px;
+  padding: 7px 9px;
 }
 
 .trade-status-card strong {
   color: #067647;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .trade-status-card span,
 .trade-status-card small {
   color: #475467;
-  font-size: 12px;
-  line-height: 1.35;
+  font-size: 11px;
+  line-height: 1.25;
 }
 
 .trade-status-card.closed {
@@ -669,11 +669,11 @@ textarea {
 .order-metrics {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 6px 10px;
+  gap: 4px 10px;
   border-top: 1px solid #eef2f6;
   border-bottom: 1px solid #eef2f6;
-  padding: 9px 0;
-  font-size: 13px;
+  padding: 6px 0;
+  font-size: 12px;
 }
 
 .order-metrics span {
@@ -683,11 +683,11 @@ textarea {
 .quantity-tools {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
 }
 
 .quantity-tools button {
-  min-height: 30px;
+  min-height: 28px;
   border: 1px solid #cfd8e3;
   background: #fff;
   color: #344054;
@@ -718,7 +718,7 @@ textarea {
 }
 
 .order-buttons button {
-  min-height: 44px;
+  min-height: 40px;
   font-weight: 900;
 }
 
