@@ -174,27 +174,16 @@ a {
   gap: 8px;
 }
 
-.account-name {
-  display: none;
-  max-width: 130px;
-  overflow: hidden;
-  color: #344054;
-  font-size: 13px;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .account-menu-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-height: 38px;
   border: 1px solid #cfd8e3;
   border-radius: 999px;
   background: #fff;
   color: #172033;
-  padding: 0 12px 0 7px;
+  padding: 0 11px 0 7px;
 }
 
 .account-menu-trigger span {
@@ -218,10 +207,16 @@ a {
 }
 
 .account-menu-trigger em {
-  display: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-left: 1px solid #d9e0e6;
+  color: #1f6f8b;
   font-style: normal;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 900;
+  padding-left: 8px;
+  white-space: nowrap;
 }
 
 .account-menu-popover {
@@ -232,6 +227,7 @@ a {
   display: grid;
   gap: 4px;
   width: 190px;
+  max-width: calc(100vw - 28px);
   border: 1px solid #d9e0e6;
   border-radius: 8px;
   background: #fff;
@@ -2174,8 +2170,8 @@ textarea {
     width: 100%;
   }
 
-  .account-menu-trigger {
-    justify-content: center;
+  .topbar-actions {
+    width: 100%;
   }
 
   .account-menu {
@@ -2183,22 +2179,12 @@ textarea {
     max-width: 100%;
   }
 
-  .account-name {
-    display: inline-block;
-  }
-
   .account-menu-trigger {
-    min-width: 84px;
-    padding: 0 12px;
+    max-width: min(100%, 260px);
   }
 
-  .account-menu-trigger span,
   .account-menu-trigger strong {
-    display: none;
-  }
-
-  .account-menu-trigger em {
-    display: inline;
+    max-width: 92px;
   }
 
   .account-menu-popover {
