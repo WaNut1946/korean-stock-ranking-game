@@ -1362,8 +1362,29 @@ textarea {
   padding: 13px;
 }
 
+.announcement-list article.important,
+.admin-announcement-list article.important {
+  border-color: #f5c84b;
+  background: #fffbeb;
+}
+
 .announcement-list strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #172033;
+}
+
+.important-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #fff;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .announcement-list p {
@@ -1436,6 +1457,9 @@ textarea {
 }
 
 .admin-announcement-list strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: #172033;
 }
 

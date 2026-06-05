@@ -701,6 +701,7 @@ app.post('/admin/announcements', requireAuth, requireActiveUser, requireAdmin, a
     const title = String(req.body.title || '').trim();
     const content = String(req.body.content || '').trim();
     const isVisible = req.body.isVisible !== false;
+    const isImportant = req.body.isImportant === true;
 
     if (!title || title.length > 120) {
       return res.status(400).json({ message: '공지 제목은 1~120자로 입력해 주세요.' });
@@ -710,7 +711,7 @@ app.post('/admin/announcements', requireAuth, requireActiveUser, requireAdmin, a
       return res.status(400).json({ message: '공지 내용은 1~2000자로 입력해 주세요.' });
     }
 
-    const announcement = await store.createAnnouncement({ title, content, isVisible });
+    const announcement = await store.createAnnouncement({ title, content, isVisible, isImportant });
     return res.status(201).json({ announcement });
   } catch (error) {
     return next(error);
@@ -746,6 +747,7 @@ app.patch('/admin/announcements/:id', requireAuth, requireActiveUser, requireAdm
           title: String(req.body.title || '').trim(),
           content: String(req.body.content || '').trim(),
           isVisible: req.body.isVisible !== false,
+          isImportant: req.body.isImportant === true,
         })
       : await store.updateAnnouncementVisibility(id, Boolean(req.body.isVisible));
 

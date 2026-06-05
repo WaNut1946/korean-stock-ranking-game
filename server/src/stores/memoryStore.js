@@ -70,6 +70,7 @@ function normalizeAnnouncement(item) {
     title: item.title,
     content: item.content,
     isVisible: Boolean(item.is_visible ?? item.isVisible),
+    isImportant: Boolean(item.is_important ?? item.isImportant),
     createdAt: item.created_at || item.createdAt,
     updatedAt: item.updated_at || item.updatedAt,
   };
@@ -236,7 +237,8 @@ export function createMemoryStore() {
     async getPublicAnnouncements(limit = 10) {
       return announcements
         .filter((item) => item.is_visible)
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => Number(Boolean(b.is_important)) - Number(Boolean(a.is_important)) ||
+          new Date(b.created_at) - new Date(a.created_at))
         .slice(0, Math.min(Math.max(Number(limit) || 10, 1), 30))
         .map(normalizeAnnouncement);
     },
@@ -244,18 +246,20 @@ export function createMemoryStore() {
     async getAdminAnnouncements(limit = 30) {
       return announcements
         .slice()
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .sort((a, b) => Number(Boolean(b.is_important)) - Number(Boolean(a.is_important)) ||
+          new Date(b.created_at) - new Date(a.created_at))
         .slice(0, Math.min(Math.max(Number(limit) || 30, 1), 100))
         .map(normalizeAnnouncement);
     },
 
-    async createAnnouncement({ title, content, isVisible = true }) {
+    async createAnnouncement({ title, content, isVisible = true, isImportant = false }) {
       const now = new Date();
       const announcement = {
         id: nextAnnouncementId++,
         title,
         content,
         is_visible: isVisible,
+        is_important: isImportant,
         created_at: now,
         updated_at: now,
       };
@@ -272,13 +276,14 @@ export function createMemoryStore() {
       return normalizeAnnouncement(announcement);
     },
 
-    async updateAnnouncement(id, { title, content, isVisible }) {
+    async updateAnnouncement(id, { title, content, isVisible, isImportant = false }) {
       const announcement = announcements.find((item) => item.id === Number(id));
       if (!announcement) return null;
 
       announcement.title = title;
       announcement.content = content;
       announcement.is_visible = Boolean(isVisible);
+      announcement.is_important = Boolean(isImportant);
       announcement.updated_at = new Date();
       return normalizeAnnouncement(announcement);
     },

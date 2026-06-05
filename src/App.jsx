@@ -238,16 +238,19 @@ function AnnouncementModal({ open, onClose, announcements, loading, showSkipToda
       title: '서비스 운영 안내',
       content:
         '본 서비스는 실제 돈을 사용하지 않는 한국 주식 모의투자 시뮬레이터입니다. 투자 권유나 수익 보장을 의미하지 않습니다.',
+      isImportant: false,
     },
     {
       id: 'market-time',
       title: '거래 가능 시간',
       content: '매수와 매도는 평일 09:00~15:30에만 가능하며, 그 외 시간에는 조회만 가능합니다.',
+      isImportant: false,
     },
     {
       id: 'chart',
       title: '가격과 차트 데이터',
       content: '가격은 장중 약 15분 간격으로 갱신됩니다. 차트는 실제 가격 기록이 2회 이상 쌓인 뒤 표시됩니다.',
+      isImportant: false,
     },
   ];
   const visibleAnnouncements = [...announcements, ...fallbackAnnouncements];
@@ -269,8 +272,11 @@ function AnnouncementModal({ open, onClose, announcements, loading, showSkipToda
           {loading && <p className="empty">공지사항을 불러오는 중입니다.</p>}
           {!loading &&
             visibleAnnouncements.map((announcement) => (
-              <article key={announcement.id}>
-                <strong>{announcement.title}</strong>
+              <article className={announcement.isImportant ? 'important' : ''} key={announcement.id}>
+                <strong>
+                  {announcement.isImportant && <span className="important-badge">중요</span>}
+                  {announcement.title}
+                </strong>
                 <p>{announcement.content}</p>
                 {announcement.createdAt && <small>{formatDateTime(announcement.createdAt)}</small>}
               </article>
@@ -1386,7 +1392,8 @@ function AdminPage({ logout }) {
   const marketStatus = status?.marketStatus || {};
   const server = status?.server || {};
   const failedCount = Number(priceRefresh.failedCount || 0);
-  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', isVisible: true });
+  const emptyAnnouncementForm = { title: '', content: '', isVisible: true, isImportant: false };
+  const [announcementForm, setAnnouncementForm] = useState(emptyAnnouncementForm);
   const [editingAnnouncementId, setEditingAnnouncementId] = useState(null);
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const [announcementError, setAnnouncementError] = useState('');
@@ -1402,7 +1409,7 @@ function AdminPage({ logout }) {
       } else {
         await api.post('/admin/announcements', announcementForm);
       }
-      setAnnouncementForm({ title: '', content: '', isVisible: true });
+      setAnnouncementForm(emptyAnnouncementForm);
       setEditingAnnouncementId(null);
       await loadStatus();
     } catch (error) {
@@ -1419,13 +1426,14 @@ function AdminPage({ logout }) {
       title: announcement.title,
       content: announcement.content,
       isVisible: announcement.isVisible,
+      isImportant: announcement.isImportant,
     });
   };
 
   const cancelEditAnnouncement = () => {
     setAnnouncementError('');
     setEditingAnnouncementId(null);
-    setAnnouncementForm({ title: '', content: '', isVisible: true });
+    setAnnouncementForm(emptyAnnouncementForm);
   };
 
   const toggleAnnouncement = async (announcement) => {
@@ -1680,6 +1688,16 @@ function AdminPage({ logout }) {
                   />
                   바로 노출
                 </label>
+                <label className="checkbox-line">
+                  <input
+                    type="checkbox"
+                    checked={announcementForm.isImportant}
+                    onChange={(event) =>
+                      setAnnouncementForm({ ...announcementForm, isImportant: event.target.checked })
+                    }
+                  />
+                  중요 공지
+                </label>
                 {announcementError && <p className="error">{announcementError}</p>}
                 <div className="admin-form-actions">
                   <button className="primary-button" disabled={announcementSaving}>
@@ -1701,9 +1719,12 @@ function AdminPage({ logout }) {
               </div>
               <div className="admin-announcement-list">
                 {adminAnnouncements.map((announcement) => (
-                  <article key={announcement.id}>
+                  <article className={announcement.isImportant ? 'important' : ''} key={announcement.id}>
                     <div>
-                      <strong>{announcement.title}</strong>
+                      <strong>
+                        {announcement.isImportant && <span className="important-badge">중요</span>}
+                        {announcement.title}
+                      </strong>
                       <small>{formatDateTime(announcement.createdAt)}</small>
                     </div>
                     <p>{announcement.content}</p>

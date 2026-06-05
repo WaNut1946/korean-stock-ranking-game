@@ -73,6 +73,7 @@ function normalizeAnnouncement(row) {
     title: row.title,
     content: row.content,
     isVisible: Boolean(row.is_visible),
+    isImportant: Boolean(row.is_important),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -160,12 +161,21 @@ export function createMysqlStore(pool) {
           title VARCHAR(120) NOT NULL,
           content TEXT NOT NULL,
           is_visible TINYINT(1) NOT NULL DEFAULT 1,
+          is_important TINYINT(1) NOT NULL DEFAULT 0,
           created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             ON UPDATE CURRENT_TIMESTAMP,
-          INDEX idx_announcements_visible_created (is_visible, created_at)
+          INDEX idx_announcements_visible_created (is_visible, is_important, created_at)
         )
       `);
+
+      try {
+        await pool.execute('ALTER TABLE announcements ADD COLUMN is_important TINYINT(1) NOT NULL DEFAULT 0 AFTER is_visible');
+      } catch (error) {
+        if (error.code !== 'ER_DUP_FIELDNAME') {
+          throw error;
+        }
+      }
 
       for (const stock of stocks) {
         await pool.execute(
@@ -322,10 +332,10 @@ export function createMysqlStore(pool) {
     async getPublicAnnouncements(limit = 10) {
       const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 30);
       const [rows] = await pool.execute(
-        `SELECT id, title, content, is_visible, created_at, updated_at
+        `SELECT id, title, content, is_visible, is_important, created_at, updated_at
          FROM announcements
          WHERE is_visible = 1
-         ORDER BY created_at DESC, id DESC
+         ORDER BY is_important DESC, created_at DESC, id DESC
          LIMIT ${safeLimit}`,
       );
       return rows.map(normalizeAnnouncement);
@@ -334,21 +344,21 @@ export function createMysqlStore(pool) {
     async getAdminAnnouncements(limit = 30) {
       const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
       const [rows] = await pool.execute(
-        `SELECT id, title, content, is_visible, created_at, updated_at
+        `SELECT id, title, content, is_visible, is_important, created_at, updated_at
          FROM announcements
-         ORDER BY created_at DESC, id DESC
+         ORDER BY is_important DESC, created_at DESC, id DESC
          LIMIT ${safeLimit}`,
       );
       return rows.map(normalizeAnnouncement);
     },
 
-    async createAnnouncement({ title, content, isVisible = true }) {
+    async createAnnouncement({ title, content, isVisible = true, isImportant = false }) {
       const [result] = await pool.execute(
-        'INSERT INTO announcements (title, content, is_visible) VALUES (?, ?, ?)',
-        [title, content, isVisible ? 1 : 0],
+        'INSERT INTO announcements (title, content, is_visible, is_important) VALUES (?, ?, ?, ?)',
+        [title, content, isVisible ? 1 : 0, isImportant ? 1 : 0],
       );
       const [rows] = await pool.execute(
-        `SELECT id, title, content, is_visible, created_at, updated_at
+        `SELECT id, title, content, is_visible, is_important, created_at, updated_at
          FROM announcements
          WHERE id = ?`,
         [result.insertId],
@@ -359,7 +369,7 @@ export function createMysqlStore(pool) {
     async updateAnnouncementVisibility(id, isVisible) {
       await pool.execute('UPDATE announcements SET is_visible = ? WHERE id = ?', [isVisible ? 1 : 0, id]);
       const [rows] = await pool.execute(
-        `SELECT id, title, content, is_visible, created_at, updated_at
+        `SELECT id, title, content, is_visible, is_important, created_at, updated_at
          FROM announcements
          WHERE id = ?`,
         [id],
@@ -367,13 +377,13 @@ export function createMysqlStore(pool) {
       return rows[0] ? normalizeAnnouncement(rows[0]) : null;
     },
 
-    async updateAnnouncement(id, { title, content, isVisible }) {
+    async updateAnnouncement(id, { title, content, isVisible, isImportant = false }) {
       await pool.execute(
-        'UPDATE announcements SET title = ?, content = ?, is_visible = ? WHERE id = ?',
-        [title, content, isVisible ? 1 : 0, id],
+        'UPDATE announcements SET title = ?, content = ?, is_visible = ?, is_important = ? WHERE id = ?',
+        [title, content, isVisible ? 1 : 0, isImportant ? 1 : 0, id],
       );
       const [rows] = await pool.execute(
-        `SELECT id, title, content, is_visible, created_at, updated_at
+        `SELECT id, title, content, is_visible, is_important, created_at, updated_at
          FROM announcements
          WHERE id = ?`,
         [id],
