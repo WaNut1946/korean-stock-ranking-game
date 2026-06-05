@@ -1383,6 +1383,17 @@ textarea {
   gap: 12px;
 }
 
+.admin-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-form-actions button {
+  min-height: 38px;
+  padding: 0 14px;
+}
+
 .checkbox-line {
   display: inline-flex;
   align-items: center;

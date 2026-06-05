@@ -1387,6 +1387,7 @@ function AdminPage({ logout }) {
   const server = status?.server || {};
   const failedCount = Number(priceRefresh.failedCount || 0);
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', isVisible: true });
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState(null);
   const [announcementSaving, setAnnouncementSaving] = useState(false);
   const [announcementError, setAnnouncementError] = useState('');
 
@@ -1396,14 +1397,35 @@ function AdminPage({ logout }) {
     setAnnouncementError('');
 
     try {
-      await api.post('/admin/announcements', announcementForm);
+      if (editingAnnouncementId) {
+        await api.patch(`/admin/announcements/${editingAnnouncementId}`, announcementForm);
+      } else {
+        await api.post('/admin/announcements', announcementForm);
+      }
       setAnnouncementForm({ title: '', content: '', isVisible: true });
+      setEditingAnnouncementId(null);
       await loadStatus();
     } catch (error) {
       setAnnouncementError(error.response?.data?.message || '공지사항을 저장하지 못했습니다.');
     } finally {
       setAnnouncementSaving(false);
     }
+  };
+
+  const startEditAnnouncement = (announcement) => {
+    setAnnouncementError('');
+    setEditingAnnouncementId(announcement.id);
+    setAnnouncementForm({
+      title: announcement.title,
+      content: announcement.content,
+      isVisible: announcement.isVisible,
+    });
+  };
+
+  const cancelEditAnnouncement = () => {
+    setAnnouncementError('');
+    setEditingAnnouncementId(null);
+    setAnnouncementForm({ title: '', content: '', isVisible: true });
   };
 
   const toggleAnnouncement = async (announcement) => {
@@ -1426,6 +1448,9 @@ function AdminPage({ logout }) {
 
     try {
       await api.delete(`/admin/announcements/${announcement.id}`);
+      if (editingAnnouncementId === announcement.id) {
+        cancelEditAnnouncement();
+      }
       await loadStatus();
     } catch (error) {
       setAnnouncementError(error.response?.data?.message || '공지사항을 삭제하지 못했습니다.');
@@ -1623,8 +1648,8 @@ function AdminPage({ logout }) {
           <section className="admin-two-column wide">
             <section className="panel">
               <div className="panel-heading">
-                <h2>공지사항 작성</h2>
-                <span className="muted">확성기 버튼에 표시됩니다</span>
+                <h2>{editingAnnouncementId ? '공지사항 수정' : '공지사항 작성'}</h2>
+                <span className="muted">{editingAnnouncementId ? '수정 내용을 저장하면 즉시 반영됩니다.' : '확성기 버튼에 표시됩니다'}</span>
               </div>
               <form className="admin-announcement-form" onSubmit={createAnnouncement}>
                 <label>
@@ -1656,9 +1681,16 @@ function AdminPage({ logout }) {
                   바로 노출
                 </label>
                 {announcementError && <p className="error">{announcementError}</p>}
-                <button className="primary-button" disabled={announcementSaving}>
-                  {announcementSaving ? '저장 중' : '공지 등록'}
-                </button>
+                <div className="admin-form-actions">
+                  <button className="primary-button" disabled={announcementSaving}>
+                    {announcementSaving ? '저장 중' : editingAnnouncementId ? '수정 저장' : '공지 등록'}
+                  </button>
+                  {editingAnnouncementId && (
+                    <button className="secondary-button" type="button" onClick={cancelEditAnnouncement}>
+                      취소
+                    </button>
+                  )}
+                </div>
               </form>
             </section>
 
@@ -1676,6 +1708,9 @@ function AdminPage({ logout }) {
                     </div>
                     <p>{announcement.content}</p>
                     <div className="admin-announcement-actions">
+                      <button className="secondary-button" onClick={() => startEditAnnouncement(announcement)}>
+                        수정
+                      </button>
                       <button
                         className={announcement.isVisible ? 'secondary-button' : 'primary-button'}
                         onClick={() => toggleAnnouncement(announcement)}

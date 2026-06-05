@@ -367,6 +367,20 @@ export function createMysqlStore(pool) {
       return rows[0] ? normalizeAnnouncement(rows[0]) : null;
     },
 
+    async updateAnnouncement(id, { title, content, isVisible }) {
+      await pool.execute(
+        'UPDATE announcements SET title = ?, content = ?, is_visible = ? WHERE id = ?',
+        [title, content, isVisible ? 1 : 0, id],
+      );
+      const [rows] = await pool.execute(
+        `SELECT id, title, content, is_visible, created_at, updated_at
+         FROM announcements
+         WHERE id = ?`,
+        [id],
+      );
+      return rows[0] ? normalizeAnnouncement(rows[0]) : null;
+    },
+
     async deleteAnnouncement(id) {
       const [result] = await pool.execute('DELETE FROM announcements WHERE id = ?', [id]);
       return result.affectedRows > 0;

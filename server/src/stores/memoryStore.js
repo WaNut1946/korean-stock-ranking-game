@@ -272,6 +272,17 @@ export function createMemoryStore() {
       return normalizeAnnouncement(announcement);
     },
 
+    async updateAnnouncement(id, { title, content, isVisible }) {
+      const announcement = announcements.find((item) => item.id === Number(id));
+      if (!announcement) return null;
+
+      announcement.title = title;
+      announcement.content = content;
+      announcement.is_visible = Boolean(isVisible);
+      announcement.updated_at = new Date();
+      return normalizeAnnouncement(announcement);
+    },
+
     async deleteAnnouncement(id) {
       const announcementIndex = announcements.findIndex((item) => item.id === Number(id));
       if (announcementIndex === -1) return false;

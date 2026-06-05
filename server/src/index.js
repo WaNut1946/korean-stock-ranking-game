@@ -725,7 +725,29 @@ app.patch('/admin/announcements/:id', requireAuth, requireActiveUser, requireAdm
       return res.status(400).json({ message: '공지 ID가 올바르지 않습니다.' });
     }
 
-    const announcement = await store.updateAnnouncementVisibility(id, Boolean(req.body.isVisible));
+    const isContentUpdate = Object.prototype.hasOwnProperty.call(req.body, 'title') ||
+      Object.prototype.hasOwnProperty.call(req.body, 'content');
+
+    if (isContentUpdate) {
+      const title = String(req.body.title || '').trim();
+      const content = String(req.body.content || '').trim();
+
+      if (!title || title.length > 120) {
+        return res.status(400).json({ message: '공지 제목은 1~120자로 입력해 주세요.' });
+      }
+
+      if (!content || content.length > 2000) {
+        return res.status(400).json({ message: '공지 내용은 1~2000자로 입력해 주세요.' });
+      }
+    }
+
+    const announcement = isContentUpdate
+      ? await store.updateAnnouncement(id, {
+          title: String(req.body.title || '').trim(),
+          content: String(req.body.content || '').trim(),
+          isVisible: req.body.isVisible !== false,
+        })
+      : await store.updateAnnouncementVisibility(id, Boolean(req.body.isVisible));
 
     if (!announcement) {
       return res.status(404).json({ message: '공지사항을 찾을 수 없습니다.' });
