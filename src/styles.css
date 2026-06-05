@@ -169,6 +169,20 @@ a {
 
 .account-menu {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-name {
+  display: none;
+  max-width: 130px;
+  overflow: hidden;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .account-menu-trigger {
@@ -201,6 +215,13 @@ a {
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.account-menu-trigger em {
+  display: none;
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .account-menu-popover {
@@ -2153,19 +2174,37 @@ textarea {
     width: 100%;
   }
 
-  .account-menu,
   .account-menu-trigger {
-    width: 100%;
+    justify-content: center;
+  }
+
+  .account-menu {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .account-name {
+    display: inline-block;
   }
 
   .account-menu-trigger {
-    justify-content: flex-start;
+    min-width: 84px;
+    padding: 0 12px;
+  }
+
+  .account-menu-trigger span,
+  .account-menu-trigger strong {
+    display: none;
+  }
+
+  .account-menu-trigger em {
+    display: inline;
   }
 
   .account-menu-popover {
-    left: 0;
-    right: auto;
-    width: 100%;
+    left: auto;
+    right: 0;
+    width: min(220px, calc(100vw - 28px));
   }
 
   .admin-user-profile,

@@ -1197,6 +1197,9 @@ function Dashboard({ logout }) {
             </Link>
           )}
           <div className="account-menu" ref={accountMenuRef}>
+            <span className="account-name">
+              {portfolio.user?.nickname || '내 계정'}
+            </span>
             <button
               className="account-menu-trigger"
               onClick={() => setAccountMenuOpen((current) => !current)}
@@ -1204,6 +1207,7 @@ function Dashboard({ logout }) {
             >
               <span>{portfolio.user?.nickname?.slice(0, 1) || '내'}</span>
               <strong>{portfolio.user?.nickname || '내 계정'}</strong>
+              <em>프로필</em>
             </button>
             {accountMenuOpen && (
               <div className="account-menu-popover">
