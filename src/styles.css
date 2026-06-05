@@ -2093,7 +2093,11 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .stock-list-panel,
+  .stock-list-panel {
+    height: 320px;
+    max-height: 320px;
+  }
+
   .chart-main {
     height: auto;
     max-height: none;
