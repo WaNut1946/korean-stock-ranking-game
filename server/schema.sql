@@ -76,3 +76,14 @@ CREATE TABLE IF NOT EXISTS asset_history (
     FOREIGN KEY (user_id) REFERENCES users(id)
     ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS announcements (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(120) NOT NULL,
+  content TEXT NOT NULL,
+  is_visible TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_announcements_visible_created (is_visible, created_at)
+);

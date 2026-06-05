@@ -67,6 +67,17 @@ function normalizeAssetHistory(row) {
   };
 }
 
+function normalizeAnnouncement(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    content: row.content,
+    isVisible: Boolean(row.is_visible),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 const historyLimits = {
   '15M': { bucketSeconds: 15 * 60, limit: 24 },
   '1H': { bucketSeconds: 60 * 60, limit: 24 },
@@ -140,6 +151,19 @@ export function createMysqlStore(pool) {
           CONSTRAINT fk_asset_history_user
             FOREIGN KEY (user_id) REFERENCES users(id)
             ON DELETE CASCADE
+        )
+      `);
+
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS announcements (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          title VARCHAR(120) NOT NULL,
+          content TEXT NOT NULL,
+          is_visible TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            ON UPDATE CURRENT_TIMESTAMP,
+          INDEX idx_announcements_visible_created (is_visible, created_at)
         )
       `);
 
@@ -293,6 +317,54 @@ export function createMysqlStore(pool) {
         stockHistoryCount: Number(stockHistoryStats.stock_history_count || 0),
         latestStockHistoryAt: stockHistoryStats.latest_stock_history_at,
       };
+    },
+
+    async getPublicAnnouncements(limit = 10) {
+      const safeLimit = Math.min(Math.max(Number(limit) || 10, 1), 30);
+      const [rows] = await pool.execute(
+        `SELECT id, title, content, is_visible, created_at, updated_at
+         FROM announcements
+         WHERE is_visible = 1
+         ORDER BY created_at DESC, id DESC
+         LIMIT ${safeLimit}`,
+      );
+      return rows.map(normalizeAnnouncement);
+    },
+
+    async getAdminAnnouncements(limit = 30) {
+      const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 100);
+      const [rows] = await pool.execute(
+        `SELECT id, title, content, is_visible, created_at, updated_at
+         FROM announcements
+         ORDER BY created_at DESC, id DESC
+         LIMIT ${safeLimit}`,
+      );
+      return rows.map(normalizeAnnouncement);
+    },
+
+    async createAnnouncement({ title, content, isVisible = true }) {
+      const [result] = await pool.execute(
+        'INSERT INTO announcements (title, content, is_visible) VALUES (?, ?, ?)',
+        [title, content, isVisible ? 1 : 0],
+      );
+      const [rows] = await pool.execute(
+        `SELECT id, title, content, is_visible, created_at, updated_at
+         FROM announcements
+         WHERE id = ?`,
+        [result.insertId],
+      );
+      return normalizeAnnouncement(rows[0]);
+    },
+
+    async updateAnnouncementVisibility(id, isVisible) {
+      await pool.execute('UPDATE announcements SET is_visible = ? WHERE id = ?', [isVisible ? 1 : 0, id]);
+      const [rows] = await pool.execute(
+        `SELECT id, title, content, is_visible, created_at, updated_at
+         FROM announcements
+         WHERE id = ?`,
+        [id],
+      );
+      return rows[0] ? normalizeAnnouncement(rows[0]) : null;
     },
 
     async getAdminRecentTrades(limit = 30) {

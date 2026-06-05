@@ -224,8 +224,28 @@ function SignupNoticeModal({ notice, onConfirm }) {
   );
 }
 
-function AnnouncementModal({ open, onClose }) {
+function AnnouncementModal({ open, onClose, announcements, loading }) {
   if (!open) return null;
+
+  const fallbackAnnouncements = [
+    {
+      id: 'service',
+      title: '서비스 운영 안내',
+      content:
+        '본 서비스는 실제 돈을 사용하지 않는 한국 주식 모의투자 시뮬레이터입니다. 투자 권유나 수익 보장을 의미하지 않습니다.',
+    },
+    {
+      id: 'market-time',
+      title: '거래 가능 시간',
+      content: '매수와 매도는 평일 09:00~15:30에만 가능하며, 그 외 시간에는 조회만 가능합니다.',
+    },
+    {
+      id: 'chart',
+      title: '가격과 차트 데이터',
+      content: '가격은 장중 약 15분 간격으로 갱신됩니다. 차트는 실제 가격 기록이 2회 이상 쌓인 뒤 표시됩니다.',
+    },
+  ];
+  const visibleAnnouncements = announcements.length > 0 ? announcements : fallbackAnnouncements;
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -241,27 +261,15 @@ function AnnouncementModal({ open, onClose }) {
         </div>
 
         <div className="announcement-list">
-          <article>
-            <strong>서비스 운영 안내</strong>
-            <p>
-              본 서비스는 실제 돈을 사용하지 않는 한국 주식 모의투자 시뮬레이터입니다. 투자 권유나 수익 보장을
-              의미하지 않습니다.
-            </p>
-          </article>
-          <article>
-            <strong>거래 가능 시간</strong>
-            <p>매수와 매도는 평일 09:00~15:30에만 가능하며, 그 외 시간에는 조회만 가능합니다.</p>
-          </article>
-          <article>
-            <strong>가격과 차트 데이터</strong>
-            <p>
-              가격은 장중 약 15분 간격으로 갱신됩니다. 차트는 실제 가격 기록이 2회 이상 쌓인 뒤 표시됩니다.
-            </p>
-          </article>
-          <article>
-            <strong>서버 공지</strong>
-            <p>현재 예정된 점검은 없습니다. 추후 점검이나 변경 사항은 이 공지 영역을 통해 안내하겠습니다.</p>
-          </article>
+          {loading && <p className="empty">공지사항을 불러오는 중입니다.</p>}
+          {!loading &&
+            visibleAnnouncements.map((announcement) => (
+              <article key={announcement.id}>
+                <strong>{announcement.title}</strong>
+                <p>{announcement.content}</p>
+                {announcement.createdAt && <small>{formatDateTime(announcement.createdAt)}</small>}
+              </article>
+            ))}
         </div>
       </section>
     </div>
@@ -658,6 +666,8 @@ function Dashboard({ logout }) {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
   const [announcementOpen, setAnnouncementOpen] = useState(false);
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -863,6 +873,19 @@ function Dashboard({ logout }) {
     localStorage.setItem('welcomeGuideDismissed', 'true');
     setShowWelcomeGuide(false);
   };
+  const openAnnouncements = async () => {
+    setAnnouncementOpen(true);
+    setAnnouncementsLoading(true);
+
+    try {
+      const { data } = await api.get('/announcements');
+      setAnnouncements(data.announcements || []);
+    } catch {
+      setAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
   const priceRefresh = portfolio.priceRefresh || {};
   const priceRefreshLabel = `${getProviderLabel(priceRefresh.provider)} · ${priceRefresh.intervalMinutes || 15}분 갱신`;
   const lastPriceRefreshAt = priceRefresh.lastSuccessAt || priceRefresh.priceUpdatedAt || portfolio.priceUpdatedAt;
@@ -890,7 +913,7 @@ function Dashboard({ logout }) {
           <span className={`status ${marketOpen ? 'open' : 'closed'}`}>
             {portfolio.marketStatus?.label || '조회 전용'}
           </span>
-          <button className="icon-button" onClick={() => setAnnouncementOpen(true)} title="공지사항">
+          <button className="icon-button" onClick={openAnnouncements} title="공지사항">
             <Megaphone size={18} />
           </button>
           {portfolio.isAdmin && (
@@ -1167,7 +1190,12 @@ function Dashboard({ logout }) {
         onConfirm={confirmTrade}
         loading={tradeLoading}
       />
-      <AnnouncementModal open={announcementOpen} onClose={() => setAnnouncementOpen(false)} />
+      <AnnouncementModal
+        open={announcementOpen}
+        onClose={() => setAnnouncementOpen(false)}
+        announcements={announcements}
+        loading={announcementsLoading}
+      />
       <PasswordChangeModal
         open={passwordModalOpen}
         onCancel={closePasswordModal}
@@ -1243,10 +1271,43 @@ function AdminPage({ logout }) {
   const priceRefresh = status?.priceRefresh || {};
   const recentTrades = status?.recentTrades || [];
   const users = status?.users || [];
+  const adminAnnouncements = status?.adminAnnouncements || [];
   const priceRefreshLogs = status?.priceRefreshLogs || [];
   const marketStatus = status?.marketStatus || {};
   const server = status?.server || {};
   const failedCount = Number(priceRefresh.failedCount || 0);
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', isVisible: true });
+  const [announcementSaving, setAnnouncementSaving] = useState(false);
+  const [announcementError, setAnnouncementError] = useState('');
+
+  const createAnnouncement = async (event) => {
+    event.preventDefault();
+    setAnnouncementSaving(true);
+    setAnnouncementError('');
+
+    try {
+      await api.post('/admin/announcements', announcementForm);
+      setAnnouncementForm({ title: '', content: '', isVisible: true });
+      await loadStatus();
+    } catch (error) {
+      setAnnouncementError(error.response?.data?.message || '공지사항을 저장하지 못했습니다.');
+    } finally {
+      setAnnouncementSaving(false);
+    }
+  };
+
+  const toggleAnnouncement = async (announcement) => {
+    setAnnouncementError('');
+
+    try {
+      await api.patch(`/admin/announcements/${announcement.id}`, {
+        isVisible: !announcement.isVisible,
+      });
+      await loadStatus();
+    } catch (error) {
+      setAnnouncementError(error.response?.data?.message || '공지사항 상태를 변경하지 못했습니다.');
+    }
+  };
 
   return (
     <main className="app-shell admin-shell">
@@ -1432,6 +1493,74 @@ function AdminPage({ logout }) {
                   </div>
                 ))}
                 {priceRefreshLogs.length === 0 && <p className="empty">아직 기록된 가격 갱신 로그가 없습니다.</p>}
+              </div>
+            </section>
+          </section>
+
+          <section className="admin-two-column wide">
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>공지사항 작성</h2>
+                <span className="muted">확성기 버튼에 표시됩니다</span>
+              </div>
+              <form className="admin-announcement-form" onSubmit={createAnnouncement}>
+                <label>
+                  제목
+                  <input
+                    maxLength={120}
+                    value={announcementForm.title}
+                    onChange={(event) => setAnnouncementForm({ ...announcementForm, title: event.target.value })}
+                    required
+                  />
+                </label>
+                <label>
+                  내용
+                  <textarea
+                    maxLength={2000}
+                    value={announcementForm.content}
+                    onChange={(event) => setAnnouncementForm({ ...announcementForm, content: event.target.value })}
+                    required
+                  />
+                </label>
+                <label className="checkbox-line">
+                  <input
+                    type="checkbox"
+                    checked={announcementForm.isVisible}
+                    onChange={(event) =>
+                      setAnnouncementForm({ ...announcementForm, isVisible: event.target.checked })
+                    }
+                  />
+                  바로 노출
+                </label>
+                {announcementError && <p className="error">{announcementError}</p>}
+                <button className="primary-button" disabled={announcementSaving}>
+                  {announcementSaving ? '저장 중' : '공지 등록'}
+                </button>
+              </form>
+            </section>
+
+            <section className="panel">
+              <div className="panel-heading">
+                <h2>공지 목록</h2>
+                <span className="muted">최근 30건</span>
+              </div>
+              <div className="admin-announcement-list">
+                {adminAnnouncements.map((announcement) => (
+                  <article key={announcement.id}>
+                    <div>
+                      <strong>{announcement.title}</strong>
+                      <small>{formatDateTime(announcement.createdAt)}</small>
+                    </div>
+                    <p>{announcement.content}</p>
+                    <button
+                      className={announcement.isVisible ? 'secondary-button' : 'primary-button'}
+                      onClick={() => toggleAnnouncement(announcement)}
+                    >
+                      {announcement.isVisible ? '숨기기' : '노출'}
+                    </button>
+                  </article>
+                ))}
+                {adminAnnouncements.length === 0 && <p className="empty">등록된 공지사항이 없습니다.</p>}
               </div>
             </section>
           </section>

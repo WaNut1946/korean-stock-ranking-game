@@ -555,6 +555,15 @@ app.get('/stocks/:code/history', async (req, res, next) => {
   }
 });
 
+app.get('/announcements', async (req, res, next) => {
+  try {
+    const announcements = await store.getPublicAnnouncements(10);
+    return res.json({ announcements });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.get('/portfolio', requireAuth, requireActiveUser, async (req, res, next) => {
   try {
     const portfolio = await store.getPortfolio(req.user.sub);
@@ -662,15 +671,17 @@ app.get('/admin/status', requireAuth, requireActiveUser, requireAdmin, async (re
     const stats = await store.getAdminStats();
     const stocks = await store.getStocks();
     const priceMap = new Map(stocks.map((stock) => [stock.code, stock.price]));
-    const [recentTrades, users] = await Promise.all([
+    const [recentTrades, users, adminAnnouncements] = await Promise.all([
       store.getAdminRecentTrades(30),
       store.getAdminUsers(priceMap, 50),
+      store.getAdminAnnouncements(30),
     ]);
 
     return res.json({
       stats,
       recentTrades,
       users,
+      adminAnnouncements,
       priceRefresh: getPriceRefreshStatusForClient(),
       priceRefreshLogs,
       marketStatus: getMarketStatusForClient(),
@@ -680,6 +691,47 @@ app.get('/admin/status', requireAuth, requireActiveUser, requireAdmin, async (re
         uptimeSeconds: Math.floor(process.uptime()),
       },
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/admin/announcements', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
+  try {
+    const title = String(req.body.title || '').trim();
+    const content = String(req.body.content || '').trim();
+    const isVisible = req.body.isVisible !== false;
+
+    if (!title || title.length > 120) {
+      return res.status(400).json({ message: '공지 제목은 1~120자로 입력해 주세요.' });
+    }
+
+    if (!content || content.length > 2000) {
+      return res.status(400).json({ message: '공지 내용은 1~2000자로 입력해 주세요.' });
+    }
+
+    const announcement = await store.createAnnouncement({ title, content, isVisible });
+    return res.status(201).json({ announcement });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.patch('/admin/announcements/:id', requireAuth, requireActiveUser, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ message: '공지 ID가 올바르지 않습니다.' });
+    }
+
+    const announcement = await store.updateAnnouncementVisibility(id, Boolean(req.body.isVisible));
+
+    if (!announcement) {
+      return res.status(404).json({ message: '공지사항을 찾을 수 없습니다.' });
+    }
+
+    return res.json({ announcement });
   } catch (error) {
     return next(error);
   }

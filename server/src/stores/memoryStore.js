@@ -11,6 +11,8 @@ const stockPrices = new Map();
 const stockPriceHistory = new Map();
 const assetHistory = [];
 let nextAssetHistoryId = 1;
+const announcements = [];
+let nextAnnouncementId = 1;
 
 function normalizeStock(stock) {
   return {
@@ -59,6 +61,17 @@ function normalizeAssetHistory(item) {
     totalAsset: Number(item.total_asset || item.totalAsset),
     returnRate: Number(item.return_rate || item.returnRate),
     recordedAt: item.recorded_at || item.recordedAt,
+  };
+}
+
+function normalizeAnnouncement(item) {
+  return {
+    id: item.id,
+    title: item.title,
+    content: item.content,
+    isVisible: Boolean(item.is_visible ?? item.isVisible),
+    createdAt: item.created_at || item.createdAt,
+    updatedAt: item.updated_at || item.updatedAt,
   };
 }
 
@@ -218,6 +231,45 @@ export function createMemoryStore() {
         stockHistoryCount: [...stockPriceHistory.values()].reduce((sum, rows) => sum + rows.length, 0),
         latestStockHistoryAt: latestStockHistory,
       };
+    },
+
+    async getPublicAnnouncements(limit = 10) {
+      return announcements
+        .filter((item) => item.is_visible)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, Math.min(Math.max(Number(limit) || 10, 1), 30))
+        .map(normalizeAnnouncement);
+    },
+
+    async getAdminAnnouncements(limit = 30) {
+      return announcements
+        .slice()
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, Math.min(Math.max(Number(limit) || 30, 1), 100))
+        .map(normalizeAnnouncement);
+    },
+
+    async createAnnouncement({ title, content, isVisible = true }) {
+      const now = new Date();
+      const announcement = {
+        id: nextAnnouncementId++,
+        title,
+        content,
+        is_visible: isVisible,
+        created_at: now,
+        updated_at: now,
+      };
+      announcements.push(announcement);
+      return normalizeAnnouncement(announcement);
+    },
+
+    async updateAnnouncementVisibility(id, isVisible) {
+      const announcement = announcements.find((item) => item.id === Number(id));
+      if (!announcement) return null;
+
+      announcement.is_visible = Boolean(isVisible);
+      announcement.updated_at = new Date();
+      return normalizeAnnouncement(announcement);
     },
 
     async getAdminRecentTrades(limit = 30) {

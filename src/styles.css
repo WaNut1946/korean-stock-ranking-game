@@ -18,7 +18,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -191,14 +192,24 @@ label {
   font-weight: 700;
 }
 
-input {
+input,
+textarea {
   width: 100%;
-  min-height: 42px;
   border: 1px solid #cfd8e3;
   border-radius: 6px;
   background: #fff;
   color: #172033;
   padding: 0 12px;
+}
+
+input {
+  min-height: 42px;
+}
+
+textarea {
+  min-height: 130px;
+  padding: 11px 12px;
+  resize: vertical;
 }
 
 .primary-button {
@@ -1274,6 +1285,72 @@ input {
   margin: 0;
   color: #475467;
   line-height: 1.55;
+}
+
+.announcement-list small {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-announcement-form {
+  display: grid;
+  gap: 12px;
+}
+
+.checkbox-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-line input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.admin-announcement-list {
+  display: grid;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-announcement-list article {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #eef2f6;
+  border-radius: 6px;
+  background: #fbfcfe;
+  padding: 12px;
+}
+
+.admin-announcement-list article > div {
+  display: grid;
+  gap: 3px;
+}
+
+.admin-announcement-list strong {
+  color: #172033;
+}
+
+.admin-announcement-list small {
+  color: #667085;
+  font-size: 12px;
+}
+
+.admin-announcement-list p {
+  margin: 0;
+  color: #475467;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.admin-announcement-list button {
+  justify-self: end;
+  min-height: 34px;
+  padding: 0 12px;
 }
 
 .notice,
