@@ -208,6 +208,9 @@ input {
   gap: 8px;
   min-height: 46px;
   background: #1f6f8b;
+  color: #fff;
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .icon-button {
@@ -782,6 +785,7 @@ input {
   border: 1px solid #cfd8e3;
   background: #fff;
   color: #172033;
+  text-decoration: none;
 }
 
 .ranking-list {
@@ -942,6 +946,14 @@ input {
   font-size: 13px;
   font-weight: 900;
   text-decoration: none;
+}
+
+.primary-button.nav-button {
+  color: #fff;
+}
+
+.secondary-button.nav-button {
+  color: #172033;
 }
 
 .admin-shell {
