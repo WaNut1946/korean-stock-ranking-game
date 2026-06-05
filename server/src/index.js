@@ -21,6 +21,7 @@ const serverStartedAt = new Date();
 const maxLoginFailures = 5;
 const loginLockMinutes = 2;
 const loginFailures = new Map();
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const nicknamePattern = /^[\p{L}\p{N} ]{2,12}$/u;
 const adminEmails = new Set(
   String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
@@ -389,14 +390,22 @@ app.post('/auth/register', async (req, res, next) => {
     const nickname = String(req.body.nickname || '').trim();
     const password = String(req.body.password || '');
 
-    if (!email || !nickname || password.length < 8) {
-      return res.status(400).json({ message: '이메일, 닉네임, 8자 이상 비밀번호가 필요합니다.' });
+    if (!email || email.length > 255 || !emailPattern.test(email)) {
+      return res.status(400).json({ message: '올바른 이메일 주소를 입력해 주세요.' });
+    }
+
+    if (!nickname) {
+      return res.status(400).json({ message: '닉네임을 입력해 주세요.' });
     }
 
     if (!nicknamePattern.test(nickname)) {
       return res.status(400).json({
         message: '닉네임은 한글, 영문, 숫자, 띄어쓰기만 사용해 2~12자로 입력해 주세요.',
       });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ message: '비밀번호는 8자 이상으로 입력해 주세요.' });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);

@@ -127,6 +127,7 @@ function AuthPage({ mode, saveSession }) {
             이메일
             <input
               type="email"
+              maxLength={255}
               value={form.email}
               onChange={(event) => setForm({ ...form, email: event.target.value })}
               required
@@ -158,6 +159,7 @@ function AuthPage({ mode, saveSession }) {
               onChange={(event) => setForm({ ...form, password: event.target.value })}
               required
             />
+            {isRegister && <small>8자 이상 입력해 주세요.</small>}
           </label>
 
           {error && <p className="error">{error}</p>}
