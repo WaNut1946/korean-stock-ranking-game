@@ -30,6 +30,11 @@ function getTodayKey() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
+function wasAnnouncementEdited(announcement) {
+  if (!announcement?.createdAt || !announcement?.updatedAt) return false;
+  return Math.abs(new Date(announcement.updatedAt).getTime() - new Date(announcement.createdAt).getTime()) > 1000;
+}
+
 const PERIODS = [
   { key: '15M', label: '15분', points: 24, stepMs: 15 * 60 * 1000, drift: 0.006 },
   { key: '1H', label: '1시간', points: 24, stepMs: 60 * 60 * 1000, drift: 0.018 },
@@ -278,7 +283,14 @@ function AnnouncementModal({ open, onClose, announcements, loading, showSkipToda
                   {announcement.title}
                 </strong>
                 <p>{announcement.content}</p>
-                {announcement.createdAt && <small>{formatDateTime(announcement.createdAt)}</small>}
+                {announcement.createdAt && (
+                  <small className="announcement-time">
+                    작성 {formatDateTime(announcement.createdAt)}
+                    {wasAnnouncementEdited(announcement) && (
+                      <span>수정됨 {formatDateTime(announcement.updatedAt)}</span>
+                    )}
+                  </small>
+                )}
               </article>
             ))}
         </div>
@@ -1725,7 +1737,12 @@ function AdminPage({ logout }) {
                         {announcement.isImportant && <span className="important-badge">중요</span>}
                         {announcement.title}
                       </strong>
-                      <small>{formatDateTime(announcement.createdAt)}</small>
+                      <small className="announcement-time">
+                        작성 {formatDateTime(announcement.createdAt)}
+                        {wasAnnouncementEdited(announcement) && (
+                          <span>수정됨 {formatDateTime(announcement.updatedAt)}</span>
+                        )}
+                      </small>
                     </div>
                     <p>{announcement.content}</p>
                     <div className="admin-announcement-actions">

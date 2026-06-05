@@ -1399,6 +1399,16 @@ textarea {
   font-weight: 800;
 }
 
+.announcement-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.announcement-time span {
+  color: #92400e;
+}
+
 .admin-announcement-form {
   display: grid;
   gap: 12px;
