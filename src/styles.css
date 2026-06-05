@@ -19,7 +19,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -268,7 +269,8 @@ label {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid #cfd8e3;
   border-radius: 6px;
@@ -2248,5 +2250,11 @@ textarea {
 
   .order-summary {
     grid-template-columns: 1fr;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
