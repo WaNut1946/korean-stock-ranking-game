@@ -21,6 +21,7 @@ const serverStartedAt = new Date();
 const maxLoginFailures = 5;
 const loginLockMinutes = 2;
 const loginFailures = new Map();
+const nicknamePattern = /^[\p{L}\p{N} ]{2,12}$/u;
 const adminEmails = new Set(
   String(process.env.ADMIN_EMAILS || process.env.ADMIN_EMAIL || '')
     .split(',')
@@ -388,8 +389,14 @@ app.post('/auth/register', async (req, res, next) => {
     const nickname = String(req.body.nickname || '').trim();
     const password = String(req.body.password || '');
 
-    if (!email || !nickname || password.length < 6) {
-      return res.status(400).json({ message: '이메일, 닉네임, 6자 이상 비밀번호가 필요합니다.' });
+    if (!email || !nickname || password.length < 8) {
+      return res.status(400).json({ message: '이메일, 닉네임, 8자 이상 비밀번호가 필요합니다.' });
+    }
+
+    if (!nicknamePattern.test(nickname)) {
+      return res.status(400).json({
+        message: '닉네임은 한글, 영문, 숫자, 띄어쓰기만 사용해 2~12자로 입력해 주세요.',
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
@@ -474,8 +481,8 @@ app.patch('/auth/password', requireAuth, requireActiveUser, async (req, res, nex
     const currentPassword = String(req.body.currentPassword || '');
     const newPassword = String(req.body.newPassword || '');
 
-    if (!currentPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: '현재 비밀번호와 6자 이상의 새 비밀번호를 입력해 주세요.' });
+    if (!currentPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: '현재 비밀번호와 8자 이상의 새 비밀번호를 입력해 주세요.' });
     }
 
     if (!(await bcrypt.compare(currentPassword, req.activeUser.password_hash))) {

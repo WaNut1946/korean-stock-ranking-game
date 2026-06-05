@@ -139,8 +139,13 @@ function AuthPage({ mode, saveSession }) {
               <input
                 value={form.nickname}
                 onChange={(event) => setForm({ ...form, nickname: event.target.value })}
+                minLength={2}
+                maxLength={12}
+                pattern="[\p{L}\p{N} ]{2,12}"
+                title="닉네임은 한글, 영문, 숫자, 띄어쓰기만 사용해 2~12자로 입력해 주세요."
                 required
               />
+              <small>2~12자, 특수문자 제외, 띄어쓰기 가능</small>
             </label>
           )}
 
@@ -148,7 +153,7 @@ function AuthPage({ mode, saveSession }) {
             비밀번호
             <input
               type="password"
-              minLength={6}
+              minLength={8}
               value={form.password}
               onChange={(event) => setForm({ ...form, password: event.target.value })}
               required
@@ -456,7 +461,7 @@ function PasswordChangeModal({ open, onCancel, onConfirm, loading, error, messag
   if (!open) return null;
 
   const passwordsMatch = form.newPassword && form.newPassword === form.confirmPassword;
-  const canSubmit = form.currentPassword && form.newPassword.length >= 6 && passwordsMatch;
+  const canSubmit = form.currentPassword && form.newPassword.length >= 8 && passwordsMatch;
 
   return (
     <div className="modal-backdrop" role="presentation">
@@ -472,7 +477,7 @@ function PasswordChangeModal({ open, onCancel, onConfirm, loading, error, messag
         </div>
 
         <div className="account-help">
-          현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다. 새 비밀번호는 6자 이상이어야 합니다.
+          현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다. 새 비밀번호는 8자 이상이어야 합니다.
         </div>
 
         <div className="account-form-grid">
@@ -490,7 +495,7 @@ function PasswordChangeModal({ open, onCancel, onConfirm, loading, error, messag
             새 비밀번호
             <input
               type="password"
-              minLength={6}
+              minLength={8}
               value={form.newPassword}
               onChange={(event) => setForm({ ...form, newPassword: event.target.value })}
               disabled={loading}
@@ -500,7 +505,7 @@ function PasswordChangeModal({ open, onCancel, onConfirm, loading, error, messag
             새 비밀번호 확인
             <input
               type="password"
-              minLength={6}
+              minLength={8}
               value={form.confirmPassword}
               onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })}
               disabled={loading}
