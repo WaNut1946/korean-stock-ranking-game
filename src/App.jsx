@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowDownUp,
   ChartNoAxesCombined,
@@ -78,7 +78,7 @@ function AuthPage({ mode, saveSession }) {
       }
 
       saveSession(data);
-      navigate('/');
+      navigate('/', { state: { openAnnouncements: true } });
     } catch (requestError) {
       setError(requestError.response?.data?.message || '요청을 처리하지 못했습니다.');
     } finally {
@@ -649,6 +649,8 @@ function AccountDeleteModal({ open, onCancel, onConfirm, loading, error }) {
 }
 
 function Dashboard({ logout }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [portfolio, setPortfolio] = useState(null);
   const [stocks, setStocks] = useState([]);
   const [ranking, setRanking] = useState([]);
@@ -745,6 +747,27 @@ function Dashboard({ logout }) {
       .then((response) => setPriceHistory(response.data.history || []))
       .catch(() => setPriceHistory([]));
   }, [selectedStock?.code, period]);
+
+  const openAnnouncements = async () => {
+    setAnnouncementOpen(true);
+    setAnnouncementsLoading(true);
+
+    try {
+      const { data } = await api.get('/announcements');
+      setAnnouncements(data.announcements || []);
+    } catch {
+      setAnnouncements([]);
+    } finally {
+      setAnnouncementsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!location.state?.openAnnouncements) return;
+
+    openAnnouncements();
+    navigate('/', { replace: true, state: {} });
+  }, [location.state?.openAnnouncements]);
 
   const openOrder = (type) => {
     if (!selectedStock) return;
@@ -872,19 +895,6 @@ function Dashboard({ logout }) {
   const closeWelcomeGuide = () => {
     localStorage.setItem('welcomeGuideDismissed', 'true');
     setShowWelcomeGuide(false);
-  };
-  const openAnnouncements = async () => {
-    setAnnouncementOpen(true);
-    setAnnouncementsLoading(true);
-
-    try {
-      const { data } = await api.get('/announcements');
-      setAnnouncements(data.announcements || []);
-    } catch {
-      setAnnouncements([]);
-    } finally {
-      setAnnouncementsLoading(false);
-    }
   };
   const priceRefresh = portfolio.priceRefresh || {};
   const priceRefreshLabel = `${getProviderLabel(priceRefresh.provider)} · ${priceRefresh.intervalMinutes || 15}분 갱신`;
