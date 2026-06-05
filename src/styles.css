@@ -1016,6 +1016,27 @@ textarea {
   text-align: right;
 }
 
+.ranking-guide {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+  border: 1px solid #eef2f6;
+  border-radius: 6px;
+  background: #fbfcfe;
+  padding: 10px 12px;
+}
+
+.ranking-guide strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.ranking-guide span {
+  color: #667085;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .ranking-item {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) minmax(112px, 0.95fr) 68px;
@@ -1024,6 +1045,21 @@ textarea {
   min-height: 50px;
   border-bottom: 1px solid #eef2f6;
   font-size: 13px;
+}
+
+.ranking-head {
+  min-height: 34px;
+  color: #667085;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.ranking-head span {
+  white-space: nowrap;
+}
+
+.ranking-head span:first-child {
+  text-align: center;
 }
 
 .ranking-item span,

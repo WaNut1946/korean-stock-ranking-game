@@ -1326,6 +1326,12 @@ function Dashboard({ logout }) {
               </button>
             </div>
           </div>
+          <div className="ranking-guide">
+            <strong>{rankingSort === 'asset' ? '총자산 기준 TOP 10' : '수익률 기준 TOP 10'}</strong>
+            <span>
+              모든 유저는 100,000,000원으로 시작하며, 수익률은 시작 자산 대비 현재 총자산 기준으로 계산됩니다.
+            </span>
+          </div>
           {myRanking && (
             <div className="my-ranking">
               <span>내 순위</span>
@@ -1336,6 +1342,12 @@ function Dashboard({ logout }) {
             </div>
           )}
           <div className="ranking-list">
+            <div className="ranking-item ranking-head">
+              <span>순위</span>
+              <span>닉네임</span>
+              <span>총자산</span>
+              <span>수익률</span>
+            </div>
             {ranking.map((item) => (
               <div className={`ranking-item ${myRanking?.userId === item.userId ? 'me' : ''}`} key={item.userId}>
                 <strong>{item.rank}</strong>
