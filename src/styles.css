@@ -2195,12 +2195,106 @@ textarea {
 }
 
 @media (max-width: 760px) {
-  .holdings-table {
-    overflow-x: auto;
+  .holdings-table,
+  .trades-table {
+    gap: 10px;
+    overflow-x: visible;
+  }
+
+  .holdings-table .row.head,
+  .trades-table .row.head {
+    display: none;
+  }
+
+  .holdings-table .row,
+  .trades-table .row {
+    display: grid;
+    min-width: 0;
+    border: 1px solid #e3edf2;
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px;
   }
 
   .holdings-table .row {
-    min-width: 820px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .holdings-table .row span:first-child,
+  .holdings-table .row button {
+    grid-column: 1 / -1;
+  }
+
+  .holdings-table .row button {
+    width: 100%;
+  }
+
+  .trades-table .row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trades-table .row span:first-child,
+  .trades-table .row span:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .holdings-table .row span,
+  .trades-table .row span {
+    display: grid;
+    gap: 3px;
+    color: #172033;
+    font-size: 14px;
+  }
+
+  .holdings-table .row span::before,
+  .trades-table .row span::before {
+    color: #667085;
+    font-size: 11px;
+    font-weight: 900;
+  }
+
+  .holdings-table .row span:nth-child(1)::before {
+    content: "종목";
+  }
+
+  .holdings-table .row span:nth-child(2)::before {
+    content: "수량";
+  }
+
+  .holdings-table .row span:nth-child(3)::before {
+    content: "평균단가";
+  }
+
+  .holdings-table .row span:nth-child(4)::before {
+    content: "현재가";
+  }
+
+  .holdings-table .row span:nth-child(5)::before {
+    content: "평가손익";
+  }
+
+  .trades-table .row span:nth-child(1)::before {
+    content: "시간";
+  }
+
+  .trades-table .row span:nth-child(2)::before {
+    content: "구분";
+  }
+
+  .trades-table .row span:nth-child(3)::before {
+    content: "종목";
+  }
+
+  .trades-table .row span:nth-child(4)::before {
+    content: "수량";
+  }
+
+  .trades-table .row span:nth-child(5)::before {
+    content: "가격";
+  }
+
+  .trades-table .row span:nth-child(6)::before {
+    content: "금액";
   }
 }
 
