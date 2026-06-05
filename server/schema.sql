@@ -42,6 +42,27 @@ CREATE TABLE IF NOT EXISTS trades (
     ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS pending_orders (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  stock_code VARCHAR(20) NOT NULL,
+  stock_name VARCHAR(120) NOT NULL,
+  type ENUM('BUY', 'SELL') NOT NULL,
+  quantity INT NOT NULL,
+  limit_price DECIMAL(15, 2) NOT NULL,
+  reserved_amount DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+  reserved_avg_price DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+  status ENUM('OPEN', 'FILLED', 'CANCELED') NOT NULL DEFAULT 'OPEN',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  filled_at TIMESTAMP NULL DEFAULT NULL,
+  canceled_at TIMESTAMP NULL DEFAULT NULL,
+  INDEX idx_pending_user_status (user_id, status, created_at),
+  INDEX idx_pending_status_stock (status, stock_code),
+  CONSTRAINT fk_pending_orders_user
+    FOREIGN KEY (user_id) REFERENCES users(id)
+    ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS stock_prices (
   stock_code VARCHAR(20) PRIMARY KEY,
   stock_name VARCHAR(120) NOT NULL,

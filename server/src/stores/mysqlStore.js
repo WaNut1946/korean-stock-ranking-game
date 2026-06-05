@@ -47,6 +47,24 @@ function normalizeTrade(row) {
   };
 }
 
+function normalizePendingOrder(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    stockCode: row.stock_code,
+    stockName: row.stock_name,
+    type: row.type,
+    quantity: Number(row.quantity),
+    limitPrice: Number(row.limit_price),
+    reservedAmount: Number(row.reserved_amount || 0),
+    reservedAvgPrice: Number(row.reserved_avg_price || 0),
+    status: row.status,
+    createdAt: row.created_at,
+    filledAt: row.filled_at,
+    canceledAt: row.canceled_at,
+  };
+}
+
 function normalizePriceHistory(row) {
   return {
     stockCode: row.stock_code,
@@ -88,6 +106,76 @@ const historyLimits = {
   '1W': { bucketSeconds: 7 * 24 * 60 * 60, limit: 24 },
   '1M': { bucketSeconds: 30 * 24 * 60 * 60, limit: 24 },
 };
+
+async function addBoughtHolding(connection, { userId, stock, quantity, price, totalAmount }) {
+  const [[holding]] = await connection.execute(
+    'SELECT * FROM holdings WHERE user_id = ? AND stock_code = ? FOR UPDATE',
+    [userId, stock.code],
+  );
+
+  if (holding) {
+    const nextQuantity = Number(holding.quantity) + quantity;
+    const nextAvgPrice = Math.round(
+      (Number(holding.avg_price) * Number(holding.quantity) + totalAmount) / nextQuantity,
+    );
+    await connection.execute('UPDATE holdings SET quantity = ?, avg_price = ? WHERE id = ?', [
+      nextQuantity,
+      nextAvgPrice,
+      holding.id,
+    ]);
+  } else {
+    await connection.execute(
+      'INSERT INTO holdings (user_id, stock_code, stock_name, quantity, avg_price) VALUES (?, ?, ?, ?, ?)',
+      [userId, stock.code, stock.name, quantity, Math.round(totalAmount / quantity)],
+    );
+  }
+}
+
+async function reserveSellHolding(connection, { userId, stock, quantity }) {
+  const [[holding]] = await connection.execute(
+    'SELECT * FROM holdings WHERE user_id = ? AND stock_code = ? FOR UPDATE',
+    [userId, stock.code],
+  );
+
+  if (!holding || Number(holding.quantity) < quantity) {
+    throw new Error('INSUFFICIENT_STOCK');
+  }
+
+  const nextQuantity = Number(holding.quantity) - quantity;
+  if (nextQuantity === 0) {
+    await connection.execute('DELETE FROM holdings WHERE id = ?', [holding.id]);
+  } else {
+    await connection.execute('UPDATE holdings SET quantity = ? WHERE id = ?', [nextQuantity, holding.id]);
+  }
+
+  return Number(holding.avg_price);
+}
+
+async function restoreSellHolding(connection, { userId, order }) {
+  const [[holding]] = await connection.execute(
+    'SELECT * FROM holdings WHERE user_id = ? AND stock_code = ? FOR UPDATE',
+    [userId, order.stock_code],
+  );
+
+  if (holding) {
+    const nextQuantity = Number(holding.quantity) + Number(order.quantity);
+    const nextAvgPrice = Math.round(
+      (Number(holding.avg_price) * Number(holding.quantity) +
+        Number(order.reserved_avg_price) * Number(order.quantity)) /
+        nextQuantity,
+    );
+    await connection.execute('UPDATE holdings SET quantity = ?, avg_price = ? WHERE id = ?', [
+      nextQuantity,
+      nextAvgPrice,
+      holding.id,
+    ]);
+  } else {
+    await connection.execute(
+      'INSERT INTO holdings (user_id, stock_code, stock_name, quantity, avg_price) VALUES (?, ?, ?, ?, ?)',
+      [userId, order.stock_code, order.stock_name, order.quantity, order.reserved_avg_price],
+    );
+  }
+}
 
 export function createMysqlStore(pool) {
   return {
@@ -168,6 +256,29 @@ export function createMysqlStore(pool) {
           updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             ON UPDATE CURRENT_TIMESTAMP,
           INDEX idx_announcements_visible_created (is_visible, is_important, created_at)
+        )
+      `);
+
+      await pool.execute(`
+        CREATE TABLE IF NOT EXISTS pending_orders (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          stock_code VARCHAR(20) NOT NULL,
+          stock_name VARCHAR(120) NOT NULL,
+          type ENUM('BUY', 'SELL') NOT NULL,
+          quantity INT NOT NULL,
+          limit_price DECIMAL(15, 2) NOT NULL,
+          reserved_amount DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+          reserved_avg_price DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+          status ENUM('OPEN', 'FILLED', 'CANCELED') NOT NULL DEFAULT 'OPEN',
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          filled_at TIMESTAMP NULL DEFAULT NULL,
+          canceled_at TIMESTAMP NULL DEFAULT NULL,
+          INDEX idx_pending_user_status (user_id, status, created_at),
+          INDEX idx_pending_status_stock (status, stock_code),
+          CONSTRAINT fk_pending_orders_user
+            FOREIGN KEY (user_id) REFERENCES users(id)
+            ON DELETE CASCADE
         )
       `);
 
@@ -469,46 +580,25 @@ export function createMysqlStore(pool) {
       return rows.map(normalizeTrade);
     },
 
-    async buyStock({ userId, stock, quantity }) {
+    async buyStock({ userId, stock, quantity, price = stock.price }) {
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
 
         const [[user]] = await connection.execute('SELECT * FROM users WHERE id = ? FOR UPDATE', [userId]);
-        const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'BUY' });
+        const tradeCost = calculateTradeCost({ price, quantity, type: 'BUY' });
         const totalAmount = tradeCost.settlementAmount;
 
         if (!user || Number(user.cash_balance) < totalAmount) {
           throw new Error('INSUFFICIENT_CASH');
         }
 
-        const [[holding]] = await connection.execute(
-          'SELECT * FROM holdings WHERE user_id = ? AND stock_code = ? FOR UPDATE',
-          [userId, stock.code],
-        );
-
         await connection.execute('UPDATE users SET cash_balance = cash_balance - ? WHERE id = ?', [totalAmount, userId]);
-
-        if (holding) {
-          const nextQuantity = Number(holding.quantity) + quantity;
-          const nextAvgPrice = Math.round(
-            (Number(holding.avg_price) * Number(holding.quantity) + totalAmount) / nextQuantity,
-          );
-          await connection.execute('UPDATE holdings SET quantity = ?, avg_price = ? WHERE id = ?', [
-            nextQuantity,
-            nextAvgPrice,
-            holding.id,
-          ]);
-        } else {
-          await connection.execute(
-            'INSERT INTO holdings (user_id, stock_code, stock_name, quantity, avg_price) VALUES (?, ?, ?, ?, ?)',
-            [userId, stock.code, stock.name, quantity, Math.round(totalAmount / quantity)],
-          );
-        }
+        await addBoughtHolding(connection, { userId, stock, quantity, price, totalAmount });
 
         await connection.execute(
           'INSERT INTO trades (user_id, stock_code, stock_name, type, quantity, price, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [userId, stock.code, stock.name, 'BUY', quantity, stock.price, totalAmount],
+          [userId, stock.code, stock.name, 'BUY', quantity, price, totalAmount],
         );
 
         await connection.commit();
@@ -521,35 +611,20 @@ export function createMysqlStore(pool) {
       }
     },
 
-    async sellStock({ userId, stock, quantity }) {
+    async sellStock({ userId, stock, quantity, price = stock.price }) {
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
 
-        const [[holding]] = await connection.execute(
-          'SELECT * FROM holdings WHERE user_id = ? AND stock_code = ? FOR UPDATE',
-          [userId, stock.code],
-        );
-
-        if (!holding || Number(holding.quantity) < quantity) {
-          throw new Error('INSUFFICIENT_STOCK');
-        }
-
-        const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'SELL' });
+        await reserveSellHolding(connection, { userId, stock, quantity });
+        const tradeCost = calculateTradeCost({ price, quantity, type: 'SELL' });
         const totalAmount = tradeCost.settlementAmount;
-        const nextQuantity = Number(holding.quantity) - quantity;
 
         await connection.execute('UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?', [totalAmount, userId]);
 
-        if (nextQuantity === 0) {
-          await connection.execute('DELETE FROM holdings WHERE id = ?', [holding.id]);
-        } else {
-          await connection.execute('UPDATE holdings SET quantity = ? WHERE id = ?', [nextQuantity, holding.id]);
-        }
-
         await connection.execute(
           'INSERT INTO trades (user_id, stock_code, stock_name, type, quantity, price, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [userId, stock.code, stock.name, 'SELL', quantity, stock.price, totalAmount],
+          [userId, stock.code, stock.name, 'SELL', quantity, price, totalAmount],
         );
 
         await connection.commit();
@@ -560,6 +635,216 @@ export function createMysqlStore(pool) {
       } finally {
         connection.release();
       }
+    },
+
+    async placeLimitOrder({ userId, stock, quantity, type, limitPrice }) {
+      const normalizedType = type === 'SELL' ? 'SELL' : 'BUY';
+      const currentPrice = Number(stock.price);
+      const numericLimitPrice = Number(limitPrice);
+      const executable =
+        normalizedType === 'BUY' ? currentPrice <= numericLimitPrice : currentPrice >= numericLimitPrice;
+
+      if (executable) {
+        const portfolio = normalizedType === 'BUY'
+          ? await this.buyStock({ userId, stock, quantity, price: currentPrice })
+          : await this.sellStock({ userId, stock, quantity, price: currentPrice });
+        return { status: 'FILLED', order: null, portfolio };
+      }
+
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+
+        let reservedAmount = 0;
+        let reservedAvgPrice = 0;
+
+        if (normalizedType === 'BUY') {
+          const [[user]] = await connection.execute('SELECT * FROM users WHERE id = ? FOR UPDATE', [userId]);
+          reservedAmount = calculateTradeCost({ price: numericLimitPrice, quantity, type: 'BUY' }).settlementAmount;
+
+          if (!user || Number(user.cash_balance) < reservedAmount) {
+            throw new Error('INSUFFICIENT_CASH');
+          }
+
+          await connection.execute('UPDATE users SET cash_balance = cash_balance - ? WHERE id = ?', [
+            reservedAmount,
+            userId,
+          ]);
+        } else {
+          reservedAvgPrice = await reserveSellHolding(connection, { userId, stock, quantity });
+        }
+
+        const [result] = await connection.execute(
+          `INSERT INTO pending_orders
+             (user_id, stock_code, stock_name, type, quantity, limit_price, reserved_amount, reserved_avg_price)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [userId, stock.code, stock.name, normalizedType, quantity, numericLimitPrice, reservedAmount, reservedAvgPrice],
+        );
+
+        await connection.commit();
+
+        return {
+          status: 'OPEN',
+          order: {
+            id: result.insertId,
+            userId,
+            stockCode: stock.code,
+            stockName: stock.name,
+            type: normalizedType,
+            quantity,
+            limitPrice: numericLimitPrice,
+            reservedAmount,
+            reservedAvgPrice,
+            status: 'OPEN',
+            createdAt: new Date().toISOString(),
+          },
+          portfolio: await this.getPortfolio(userId),
+        };
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    },
+
+    async getOpenOrders(userId) {
+      const [rows] = await pool.execute(
+        `SELECT * FROM pending_orders
+         WHERE user_id = ? AND status = 'OPEN'
+         ORDER BY created_at DESC, id DESC`,
+        [userId],
+      );
+      return rows.map(normalizePendingOrder);
+    },
+
+    async cancelOrder({ userId, orderId }) {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+
+        const [[order]] = await connection.execute(
+          `SELECT * FROM pending_orders
+           WHERE id = ? AND user_id = ? AND status = 'OPEN'
+           FOR UPDATE`,
+          [orderId, userId],
+        );
+
+        if (!order) {
+          throw new Error('ORDER_NOT_FOUND');
+        }
+
+        if (order.type === 'BUY') {
+          await connection.execute('UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?', [
+            order.reserved_amount,
+            userId,
+          ]);
+        } else {
+          await restoreSellHolding(connection, { userId, order });
+        }
+
+        await connection.execute(
+          "UPDATE pending_orders SET status = 'CANCELED', canceled_at = NOW() WHERE id = ?",
+          [order.id],
+        );
+
+        await connection.commit();
+        return this.getPortfolio(userId);
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    },
+
+    async processPendingOrders() {
+      const [orders] = await pool.execute(
+        `SELECT pending_orders.*, stock_prices.price
+         FROM pending_orders
+         JOIN stock_prices ON stock_prices.stock_code = pending_orders.stock_code
+         WHERE pending_orders.status = 'OPEN'
+         ORDER BY pending_orders.created_at ASC, pending_orders.id ASC`,
+      );
+      let filledCount = 0;
+
+      for (const order of orders) {
+        const currentPrice = Number(order.price);
+        const limitPrice = Number(order.limit_price);
+        const executable = order.type === 'BUY' ? currentPrice <= limitPrice : currentPrice >= limitPrice;
+        if (!executable) continue;
+
+        const connection = await pool.getConnection();
+        try {
+          await connection.beginTransaction();
+
+          const [[lockedOrder]] = await connection.execute(
+            "SELECT * FROM pending_orders WHERE id = ? AND status = 'OPEN' FOR UPDATE",
+            [order.id],
+          );
+
+          if (!lockedOrder) {
+            await connection.rollback();
+            continue;
+          }
+
+          const stock = {
+            code: lockedOrder.stock_code,
+            name: lockedOrder.stock_name,
+            price: currentPrice,
+          };
+          const tradeCost = calculateTradeCost({ price: currentPrice, quantity: lockedOrder.quantity, type: lockedOrder.type });
+          const totalAmount = tradeCost.settlementAmount;
+
+          if (lockedOrder.type === 'BUY') {
+            const refund = Math.max(Number(lockedOrder.reserved_amount) - totalAmount, 0);
+            if (refund > 0) {
+              await connection.execute('UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?', [
+                refund,
+                lockedOrder.user_id,
+              ]);
+            }
+            await addBoughtHolding(connection, {
+              userId: lockedOrder.user_id,
+              stock,
+              quantity: Number(lockedOrder.quantity),
+              price: currentPrice,
+              totalAmount,
+            });
+          } else {
+            await connection.execute('UPDATE users SET cash_balance = cash_balance + ? WHERE id = ?', [
+              totalAmount,
+              lockedOrder.user_id,
+            ]);
+          }
+
+          await connection.execute(
+            'INSERT INTO trades (user_id, stock_code, stock_name, type, quantity, price, total_amount) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+              lockedOrder.user_id,
+              lockedOrder.stock_code,
+              lockedOrder.stock_name,
+              lockedOrder.type,
+              lockedOrder.quantity,
+              currentPrice,
+              totalAmount,
+            ],
+          );
+          await connection.execute("UPDATE pending_orders SET status = 'FILLED', filled_at = NOW() WHERE id = ?", [
+            lockedOrder.id,
+          ]);
+
+          await connection.commit();
+          filledCount += 1;
+        } catch (error) {
+          await connection.rollback();
+          console.error(`Pending order ${order.id} processing failed: ${error.message}`);
+        } finally {
+          connection.release();
+        }
+      }
+
+      return { filledCount };
     },
 
     async getPortfolio(userId) {

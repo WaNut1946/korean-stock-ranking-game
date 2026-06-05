@@ -875,12 +875,15 @@ function Dashboard({ logout }) {
   const [myRanking, setMyRanking] = useState(null);
   const [rankingSort, setRankingSort] = useState('asset');
   const [trades, setTrades] = useState([]);
+  const [openOrders, setOpenOrders] = useState([]);
   const [tradeFilter, setTradeFilter] = useState('ALL');
   const [tradeQuery, setTradeQuery] = useState('');
   const [holdingSort, setHoldingSort] = useState('default');
   const [assetHistory, setAssetHistory] = useState([]);
   const [query, setQuery] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [orderType, setOrderType] = useState('MARKET');
+  const [limitPrice, setLimitPrice] = useState('');
   const [selectedCode, setSelectedCode] = useState('');
   const [period, setPeriod] = useState('15M');
   const [priceHistory, setPriceHistory] = useState([]);
@@ -956,6 +959,7 @@ function Dashboard({ logout }) {
       api.get('/ranking', { params: { sort: rankingSort } }),
     ]);
     const tradesResponse = await api.get('/trades').catch(() => ({ data: { trades: [] } }));
+    const ordersResponse = await api.get('/orders').catch(() => ({ data: { orders: [] } }));
     const assetHistoryResponse = await api.get('/asset-history').catch(() => ({ data: { history: [] } }));
 
     setPortfolio(portfolioResponse.data);
@@ -964,6 +968,7 @@ function Dashboard({ logout }) {
     setRanking(rankingResponse.data.ranking);
     setMyRanking(rankingResponse.data.me);
     setTrades(tradesResponse.data.trades);
+    setOpenOrders(ordersResponse.data.orders);
     setAssetHistory(assetHistoryResponse.data.history);
   };
 
@@ -995,6 +1000,12 @@ function Dashboard({ logout }) {
       .then((response) => setPriceHistory(response.data.history || []))
       .catch(() => setPriceHistory([]));
   }, [selectedStock?.code, period]);
+
+  useEffect(() => {
+    if (selectedStock?.price) {
+      setLimitPrice(String(Math.round(Number(selectedStock.price))));
+    }
+  }, [selectedStock?.code, selectedStock?.price]);
 
   const openAnnouncements = async ({ automatic = false } = {}) => {
     setAnnouncementOpen(true);
@@ -1062,9 +1073,16 @@ function Dashboard({ logout }) {
   const openOrder = (type) => {
     if (!selectedStock) return;
     const orderQuantity = Number(quantity || 1);
+    const effectiveLimitPrice = Number(limitPrice);
+    const effectivePrice = orderType === 'LIMIT' ? effectiveLimitPrice : selectedStock.price;
 
     if (!Number.isInteger(orderQuantity) || orderQuantity <= 0) {
       showToast({ type: 'error', title: '수량 확인', message: '수량은 1 이상의 정수여야 합니다.' });
+      return;
+    }
+
+    if (orderType === 'LIMIT' && (!Number.isFinite(effectiveLimitPrice) || effectiveLimitPrice <= 0)) {
+      showToast({ type: 'error', title: '지정가 확인', message: '지정가 주문 가격을 1원 이상으로 입력해 주세요.' });
       return;
     }
 
@@ -1079,7 +1097,9 @@ function Dashboard({ logout }) {
       stockName: selectedStock.name,
       sector: selectedStock.sector,
       quantity: orderQuantity,
-      price: selectedStock.price,
+      price: effectivePrice,
+      currentPrice: selectedStock.price,
+      orderType,
     });
   };
 
@@ -1092,18 +1112,31 @@ function Dashboard({ logout }) {
       const { data } = await api.post(`/trade/${pendingOrder.type}`, {
         stockCode: pendingOrder.stockCode,
         quantity: pendingOrder.quantity,
+        orderType: pendingOrder.orderType,
+        limitPrice: pendingOrder.orderType === 'LIMIT' ? pendingOrder.price : undefined,
       });
-      setPortfolio(data);
-      const [rankingResponse, tradesResponse, assetHistoryResponse] = await Promise.all([
+      setPortfolio(data.portfolio || data);
+      const [rankingResponse, tradesResponse, ordersResponse, assetHistoryResponse] = await Promise.all([
         api.get('/ranking', { params: { sort: rankingSort } }),
         api.get('/trades'),
+        api.get('/orders'),
         api.get('/asset-history'),
       ]);
       setRanking(rankingResponse.data.ranking);
       setMyRanking(rankingResponse.data.me);
       setTrades(tradesResponse.data.trades);
+      setOpenOrders(ordersResponse.data.orders);
       setAssetHistory(assetHistoryResponse.data.history);
       setPendingOrder(null);
+      const isOpenOrder = data.orderStatus === 'OPEN';
+      if (isOpenOrder) {
+        showToast({
+          type: pendingOrder.type === 'buy' ? 'buy' : 'sell',
+          title: '미체결 주문 등록',
+          message: `${pendingOrder.stockName} 지정가 주문이 미체결 목록에 등록되었습니다.`,
+        });
+        return;
+      }
       showToast({
         type: pendingOrder.type === 'buy' ? 'buy' : 'sell',
         title: pendingOrder.type === 'buy' ? '매수 완료' : '매도 완료',
@@ -1117,6 +1150,29 @@ function Dashboard({ logout }) {
       });
     } finally {
       setTradeLoading(false);
+    }
+  };
+
+  const cancelOpenOrder = async (orderId) => {
+    try {
+      const { data } = await api.delete(`/orders/${orderId}`);
+      setPortfolio(data.portfolio);
+      const [ordersResponse, rankingResponse, assetHistoryResponse] = await Promise.all([
+        api.get('/orders'),
+        api.get('/ranking', { params: { sort: rankingSort } }),
+        api.get('/asset-history'),
+      ]);
+      setOpenOrders(ordersResponse.data.orders);
+      setRanking(rankingResponse.data.ranking);
+      setMyRanking(rankingResponse.data.me);
+      setAssetHistory(assetHistoryResponse.data.history);
+      showToast({ type: 'info', title: '주문 취소', message: '미체결 주문이 취소되었습니다.' });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: '취소 실패',
+        message: error.response?.data?.message || '주문을 취소하지 못했습니다.',
+      });
     }
   };
 
@@ -1183,13 +1239,15 @@ function Dashboard({ logout }) {
   const marketOpen = portfolio.marketStatus?.canTrade ?? portfolio.marketStatus?.isOpen;
   const currentQuantity = Math.max(Number(quantity || 0), 0);
   const selectedPrice = Number(selectedStock?.price || 0);
-  const estimatedCost = calculateTradeCost({ price: selectedPrice, quantity: currentQuantity, type: 'buy' }).settlementAmount;
-  const maxBuyQuantity = getMaxBuyQuantity(portfolio.summary.cashBalance, selectedPrice);
+  const orderPrice = orderType === 'LIMIT' ? Number(limitPrice || 0) : selectedPrice;
+  const estimatedCost = calculateTradeCost({ price: orderPrice, quantity: currentQuantity, type: 'buy' }).settlementAmount;
+  const maxBuyQuantity = getMaxBuyQuantity(portfolio.summary.cashBalance, orderPrice || selectedPrice);
   const maxSellQuantity = selectedHolding?.quantity || 0;
   const rawQuantity = Number(quantity);
   const invalidQuantity = !Number.isInteger(rawQuantity) || rawQuantity <= 0;
-  const buyDisabled = !marketOpen || invalidQuantity || currentQuantity > maxBuyQuantity;
-  const sellDisabled = !marketOpen || invalidQuantity || !selectedHolding || currentQuantity > maxSellQuantity;
+  const invalidLimitPrice = orderType === 'LIMIT' && (!Number.isFinite(orderPrice) || orderPrice <= 0);
+  const buyDisabled = !marketOpen || invalidQuantity || invalidLimitPrice || currentQuantity > maxBuyQuantity;
+  const sellDisabled = !marketOpen || invalidQuantity || invalidLimitPrice || !selectedHolding || currentQuantity > maxSellQuantity;
   const tradeNotice = !marketOpen
     ? '현재는 조회 전용 시간입니다. 매수/매도는 평일 09:00~15:30에 가능합니다.'
     : invalidQuantity
@@ -1385,6 +1443,33 @@ function Dashboard({ logout }) {
             종목
             <input value={selectedStock ? `${selectedStock.name} (${selectedStock.code})` : ''} readOnly />
           </label>
+          <div className="order-type-tabs" aria-label="주문 방식">
+            <button
+              className={orderType === 'MARKET' ? 'active' : ''}
+              onClick={() => setOrderType('MARKET')}
+              type="button"
+            >
+              시장가
+            </button>
+            <button
+              className={orderType === 'LIMIT' ? 'active' : ''}
+              onClick={() => setOrderType('LIMIT')}
+              type="button"
+            >
+              지정가
+            </button>
+          </div>
+          {orderType === 'LIMIT' && (
+            <label>
+              지정가
+              <input
+                type="number"
+                min="1"
+                value={limitPrice}
+                onChange={(event) => setLimitPrice(event.target.value)}
+              />
+            </label>
+          )}
           <label>
             수량
             <input
@@ -1430,6 +1515,32 @@ function Dashboard({ logout }) {
           </div>
           {tradeNotice && <p className="trade-notice">{tradeNotice}</p>}
         </aside>
+      </section>
+
+      <section className="panel open-orders-panel">
+        <div className="panel-heading">
+          <h2>미체결 주문</h2>
+          <span className="muted">{openOrders.length.toLocaleString('ko-KR')}건</span>
+        </div>
+        <div className="open-order-list">
+          {openOrders.map((order) => (
+            <div className="open-order-item" key={order.id}>
+              <span>
+                <strong>{order.stockName}</strong>
+                <small>{order.stockCode}</small>
+              </span>
+              <span className={order.type === 'BUY' ? 'trade-buy' : 'trade-sell'}>
+                {order.type === 'BUY' ? '매수' : '매도'}
+              </span>
+              <span>{order.quantity.toLocaleString('ko-KR')}주</span>
+              <span>{formatWon(order.limitPrice)}</span>
+              <button className="secondary-button" onClick={() => cancelOpenOrder(order.id)}>
+                취소
+              </button>
+            </div>
+          ))}
+          {openOrders.length === 0 && <p className="empty">미체결 주문이 없습니다.</p>}
+        </div>
       </section>
 
       <section className="bottom-grid">

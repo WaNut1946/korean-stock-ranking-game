@@ -838,6 +838,27 @@ textarea {
   color: #1f6f8b;
 }
 
+.order-type-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.order-type-tabs button {
+  min-height: 32px;
+  border: 1px solid #cfd8e3;
+  background: #fff;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.order-type-tabs button.active {
+  border-color: #1f6f8b;
+  background: #edf8fc;
+  color: #1f6f8b;
+}
+
 .inline-warning {
   margin: 0;
   border: 1px solid #ffc9c4;
@@ -876,6 +897,42 @@ textarea {
 .sell-button {
   background: #dc2626;
   box-shadow: 0 8px 18px rgba(220, 38, 38, 0.2);
+}
+
+.open-orders-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.open-order-list {
+  display: grid;
+  gap: 8px;
+}
+
+.open-order-item {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 58px 72px minmax(92px, 0.7fr) 64px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #eef2f6;
+  border-radius: 8px;
+  background: #fbfcfe;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.open-order-item strong,
+.open-order-item small {
+  display: block;
+}
+
+.open-order-item small {
+  margin-top: 3px;
+  color: #667085;
+}
+
+.open-order-item button {
+  min-height: 32px;
 }
 
 .danger-button {
@@ -2353,6 +2410,19 @@ textarea {
   .trades-table {
     gap: 10px;
     overflow-x: visible;
+  }
+
+  .open-order-item {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .open-order-item span:first-child,
+  .open-order-item button {
+    grid-column: 1 / -1;
+  }
+
+  .open-order-item button {
+    width: 100%;
   }
 
   .holdings-table .row.head,

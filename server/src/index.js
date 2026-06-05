@@ -125,6 +125,7 @@ async function refreshPrices() {
     currentStocks = await store.getStocks();
     const latestPrices = await priceProvider.getLatestPrices(currentStocks);
     await store.refreshStockPrices(latestPrices);
+    const pendingResult = await store.processPendingOrders?.();
     const userIds = await store.getAllUserIds();
     await Promise.all(userIds.map((userId) => recordAssetSnapshot(userId)));
     const stats = priceProvider.getLastStats?.() || {};
@@ -139,7 +140,8 @@ async function refreshPrices() {
       : null;
     console.log(
       `Stock prices refreshed by ${priceProvider.name} provider. ` +
-        `success=${priceRefreshStatus.successfulCount}, failed=${priceRefreshStatus.failedCount}`,
+        `success=${priceRefreshStatus.successfulCount}, failed=${priceRefreshStatus.failedCount}, ` +
+        `filledOrders=${pendingResult?.filledCount || 0}`,
     );
     addPriceRefreshLog({
       status: priceRefreshStatus.failedCount ? 'partial' : 'success',
@@ -290,6 +292,8 @@ function requireAdmin(req, res, next) {
 async function parseTradeBody(req, res) {
   const stockCode = String(req.body.stockCode || '').trim();
   const quantity = Number(req.body.quantity);
+  const orderType = String(req.body.orderType || 'MARKET').toUpperCase() === 'LIMIT' ? 'LIMIT' : 'MARKET';
+  const limitPrice = Number(req.body.limitPrice);
   const stock = await store.findStockByCode(stockCode);
 
   if (!stock) {
@@ -302,7 +306,12 @@ async function parseTradeBody(req, res) {
     return null;
   }
 
-  return { stock, quantity };
+  if (orderType === 'LIMIT' && (!Number.isFinite(limitPrice) || limitPrice <= 0)) {
+    res.status(400).json({ message: '지정가 주문 가격을 1원 이상으로 입력해 주세요.' });
+    return null;
+  }
+
+  return { stock, quantity, orderType, limitPrice };
 }
 
 async function enrichPortfolio(portfolio) {
@@ -578,13 +587,26 @@ app.post('/trade/buy', requireAuth, requireActiveUser, requireTradingOpen, async
     const parsed = await parseTradeBody(req, res);
     if (!parsed) return;
 
-    const portfolio = await store.buyStock({
-      userId: req.user.sub,
-      stock: parsed.stock,
-      quantity: parsed.quantity,
-    });
+    const result = parsed.orderType === 'LIMIT'
+      ? await store.placeLimitOrder({
+          userId: req.user.sub,
+          stock: parsed.stock,
+          quantity: parsed.quantity,
+          type: 'BUY',
+          limitPrice: parsed.limitPrice,
+        })
+      : {
+          status: 'FILLED',
+          order: null,
+          portfolio: await store.buyStock({
+            userId: req.user.sub,
+            stock: parsed.stock,
+            quantity: parsed.quantity,
+          }),
+        };
+    const portfolio = await recordAssetSnapshot(req.user.sub, result.portfolio);
 
-    return res.json(await recordAssetSnapshot(req.user.sub, portfolio));
+    return res.json({ portfolio, orderStatus: result.status, order: result.order });
   } catch (error) {
     if (error.message === 'INSUFFICIENT_CASH') {
       return res.status(400).json({ message: '현금이 부족합니다.' });
@@ -598,13 +620,26 @@ app.post('/trade/sell', requireAuth, requireActiveUser, requireTradingOpen, asyn
     const parsed = await parseTradeBody(req, res);
     if (!parsed) return;
 
-    const portfolio = await store.sellStock({
-      userId: req.user.sub,
-      stock: parsed.stock,
-      quantity: parsed.quantity,
-    });
+    const result = parsed.orderType === 'LIMIT'
+      ? await store.placeLimitOrder({
+          userId: req.user.sub,
+          stock: parsed.stock,
+          quantity: parsed.quantity,
+          type: 'SELL',
+          limitPrice: parsed.limitPrice,
+        })
+      : {
+          status: 'FILLED',
+          order: null,
+          portfolio: await store.sellStock({
+            userId: req.user.sub,
+            stock: parsed.stock,
+            quantity: parsed.quantity,
+          }),
+        };
+    const portfolio = await recordAssetSnapshot(req.user.sub, result.portfolio);
 
-    return res.json(await recordAssetSnapshot(req.user.sub, portfolio));
+    return res.json({ portfolio, orderStatus: result.status, order: result.order });
   } catch (error) {
     if (error.message === 'INSUFFICIENT_STOCK') {
       return res.status(400).json({ message: '보유 수량이 부족합니다.' });
@@ -647,6 +682,33 @@ app.get('/trades', requireAuth, requireActiveUser, async (req, res, next) => {
     const trades = await store.getTrades(req.user.sub);
     return res.json({ trades });
   } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/orders', requireAuth, requireActiveUser, async (req, res, next) => {
+  try {
+    const orders = await store.getOpenOrders(req.user.sub);
+    return res.json({ orders });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.delete('/orders/:id', requireAuth, requireActiveUser, async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+
+    if (!Number.isInteger(orderId) || orderId <= 0) {
+      return res.status(400).json({ message: '주문 ID가 올바르지 않습니다.' });
+    }
+
+    const portfolio = await store.cancelOrder({ userId: req.user.sub, orderId });
+    return res.json({ portfolio: await recordAssetSnapshot(req.user.sub, portfolio) });
+  } catch (error) {
+    if (error.message === 'ORDER_NOT_FOUND') {
+      return res.status(404).json({ message: '취소할 수 있는 미체결 주문을 찾지 못했습니다.' });
+    }
     return next(error);
   }
 });

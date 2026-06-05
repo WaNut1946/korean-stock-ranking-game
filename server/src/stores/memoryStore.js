@@ -5,10 +5,12 @@ const INITIAL_CASH = 100000000;
 let nextUserId = 1;
 let nextHoldingId = 1;
 let nextTradeId = 1;
+let nextPendingOrderId = 1;
 
 const users = [];
 const holdings = [];
 const trades = [];
+const pendingOrders = [];
 const stockPrices = new Map();
 const stockPriceHistory = new Map();
 const assetHistory = [];
@@ -41,6 +43,24 @@ function normalizeTrade(trade) {
     price: Number(trade.price),
     totalAmount: Number(trade.total_amount),
     createdAt: trade.created_at,
+  };
+}
+
+function normalizePendingOrder(order) {
+  return {
+    id: order.id,
+    userId: order.user_id,
+    stockCode: order.stock_code,
+    stockName: order.stock_name,
+    type: order.type,
+    quantity: Number(order.quantity),
+    limitPrice: Number(order.limit_price),
+    reservedAmount: Number(order.reserved_amount || 0),
+    reservedAvgPrice: Number(order.reserved_avg_price || 0),
+    status: order.status,
+    createdAt: order.created_at,
+    filledAt: order.filled_at,
+    canceledAt: order.canceled_at,
   };
 }
 
@@ -198,6 +218,9 @@ export function createMemoryStore() {
       for (let index = trades.length - 1; index >= 0; index -= 1) {
         if (trades[index].user_id === numericUserId) trades.splice(index, 1);
       }
+      for (let index = pendingOrders.length - 1; index >= 0; index -= 1) {
+        if (pendingOrders[index].user_id === numericUserId) pendingOrders.splice(index, 1);
+      }
       for (let index = assetHistory.length - 1; index >= 0; index -= 1) {
         if (Number(assetHistory[index].userId) === numericUserId) assetHistory.splice(index, 1);
       }
@@ -351,9 +374,9 @@ export function createMemoryStore() {
         .map(normalizeTrade);
     },
 
-    async buyStock({ userId, stock, quantity }) {
+    async buyStock({ userId, stock, quantity, price = stock.price }) {
       const user = await this.findUserById(userId);
-      const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'BUY' });
+      const tradeCost = calculateTradeCost({ price, quantity, type: 'BUY' });
       const totalAmount = tradeCost.settlementAmount;
 
       if (!user || user.cash_balance < totalAmount) {
@@ -389,7 +412,7 @@ export function createMemoryStore() {
         stock_name: stock.name,
         type: 'BUY',
         quantity,
-        price: stock.price,
+        price,
         total_amount: totalAmount,
         created_at: new Date(),
       });
@@ -397,7 +420,7 @@ export function createMemoryStore() {
       return this.getPortfolio(userId);
     },
 
-    async sellStock({ userId, stock, quantity }) {
+    async sellStock({ userId, stock, quantity, price = stock.price }) {
       const user = await this.findUserById(userId);
       const existing = holdings.find(
         (holding) => holding.user_id === Number(userId) && holding.stock_code === stock.code,
@@ -407,7 +430,7 @@ export function createMemoryStore() {
         throw new Error('INSUFFICIENT_STOCK');
       }
 
-      const tradeCost = calculateTradeCost({ price: stock.price, quantity, type: 'SELL' });
+      const tradeCost = calculateTradeCost({ price, quantity, type: 'SELL' });
       const totalAmount = tradeCost.settlementAmount;
       existing.quantity -= quantity;
       user.cash_balance += totalAmount;
@@ -423,12 +446,169 @@ export function createMemoryStore() {
         stock_name: stock.name,
         type: 'SELL',
         quantity,
-        price: stock.price,
+        price,
         total_amount: totalAmount,
         created_at: new Date(),
       });
 
       return this.getPortfolio(userId);
+    },
+
+    async placeLimitOrder({ userId, stock, quantity, type, limitPrice }) {
+      const normalizedType = type === 'SELL' ? 'SELL' : 'BUY';
+      const executable = normalizedType === 'BUY' ? stock.price <= limitPrice : stock.price >= limitPrice;
+
+      if (executable) {
+        const portfolio = normalizedType === 'BUY'
+          ? await this.buyStock({ userId, stock, quantity, price: stock.price })
+          : await this.sellStock({ userId, stock, quantity, price: stock.price });
+        return { status: 'FILLED', order: null, portfolio };
+      }
+
+      const user = await this.findUserById(userId);
+      let reservedAmount = 0;
+      let reservedAvgPrice = 0;
+
+      if (normalizedType === 'BUY') {
+        reservedAmount = calculateTradeCost({ price: limitPrice, quantity, type: 'BUY' }).settlementAmount;
+        if (!user || user.cash_balance < reservedAmount) throw new Error('INSUFFICIENT_CASH');
+        user.cash_balance -= reservedAmount;
+      } else {
+        const existing = holdings.find(
+          (holding) => holding.user_id === Number(userId) && holding.stock_code === stock.code,
+        );
+        if (!existing || existing.quantity < quantity) throw new Error('INSUFFICIENT_STOCK');
+        reservedAvgPrice = existing.avg_price;
+        existing.quantity -= quantity;
+        if (existing.quantity === 0) holdings.splice(holdings.indexOf(existing), 1);
+      }
+
+      const order = {
+        id: nextPendingOrderId++,
+        user_id: Number(userId),
+        stock_code: stock.code,
+        stock_name: stock.name,
+        type: normalizedType,
+        quantity,
+        limit_price: limitPrice,
+        reserved_amount: reservedAmount,
+        reserved_avg_price: reservedAvgPrice,
+        status: 'OPEN',
+        created_at: new Date(),
+        filled_at: null,
+        canceled_at: null,
+      };
+      pendingOrders.push(order);
+      return { status: 'OPEN', order: normalizePendingOrder(order), portfolio: await this.getPortfolio(userId) };
+    },
+
+    async getOpenOrders(userId) {
+      return pendingOrders
+        .filter((order) => order.user_id === Number(userId) && order.status === 'OPEN')
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map(normalizePendingOrder);
+    },
+
+    async cancelOrder({ userId, orderId }) {
+      const order = pendingOrders.find(
+        (item) => item.id === Number(orderId) && item.user_id === Number(userId) && item.status === 'OPEN',
+      );
+      if (!order) throw new Error('ORDER_NOT_FOUND');
+
+      const user = await this.findUserById(userId);
+      if (order.type === 'BUY') {
+        user.cash_balance += order.reserved_amount;
+      } else {
+        const existing = holdings.find(
+          (holding) => holding.user_id === Number(userId) && holding.stock_code === order.stock_code,
+        );
+        if (existing) {
+          const nextQuantity = existing.quantity + order.quantity;
+          existing.avg_price = Math.round(
+            (existing.avg_price * existing.quantity + order.reserved_avg_price * order.quantity) / nextQuantity,
+          );
+          existing.quantity = nextQuantity;
+        } else {
+          holdings.push({
+            id: nextHoldingId++,
+            user_id: Number(userId),
+            stock_code: order.stock_code,
+            stock_name: order.stock_name,
+            quantity: order.quantity,
+            avg_price: order.reserved_avg_price,
+          });
+        }
+      }
+
+      order.status = 'CANCELED';
+      order.canceled_at = new Date();
+      return this.getPortfolio(userId);
+    },
+
+    async processPendingOrders() {
+      let filledCount = 0;
+      for (const order of pendingOrders.filter((item) => item.status === 'OPEN')) {
+        const stock = stockPrices.get(order.stock_code);
+        if (!stock) continue;
+
+        const executable = order.type === 'BUY' ? stock.price <= order.limit_price : stock.price >= order.limit_price;
+        if (!executable) continue;
+
+        const user = await this.findUserById(order.user_id);
+        const tradeCost = calculateTradeCost({ price: stock.price, quantity: order.quantity, type: order.type });
+        const totalAmount = tradeCost.settlementAmount;
+
+        if (order.type === 'BUY') {
+          const refund = Math.max(order.reserved_amount - totalAmount, 0);
+          user.cash_balance += refund;
+          const existing = holdings.find(
+            (holding) => holding.user_id === Number(order.user_id) && holding.stock_code === order.stock_code,
+          );
+          if (existing) {
+            const currentCost = existing.avg_price * existing.quantity;
+            const nextQuantity = existing.quantity + order.quantity;
+            existing.avg_price = Math.round((currentCost + totalAmount) / nextQuantity);
+            existing.quantity = nextQuantity;
+          } else {
+            holdings.push({
+              id: nextHoldingId++,
+              user_id: Number(order.user_id),
+              stock_code: order.stock_code,
+              stock_name: order.stock_name,
+              quantity: order.quantity,
+              avg_price: Math.round(totalAmount / order.quantity),
+            });
+          }
+          trades.push({
+            id: nextTradeId++,
+            user_id: order.user_id,
+            stock_code: order.stock_code,
+            stock_name: order.stock_name,
+            type: 'BUY',
+            quantity: order.quantity,
+            price: stock.price,
+            total_amount: totalAmount,
+            created_at: new Date(),
+          });
+        } else {
+          user.cash_balance += totalAmount;
+          trades.push({
+            id: nextTradeId++,
+            user_id: order.user_id,
+            stock_code: order.stock_code,
+            stock_name: order.stock_name,
+            type: 'SELL',
+            quantity: order.quantity,
+            price: stock.price,
+            total_amount: totalAmount,
+            created_at: new Date(),
+          });
+        }
+        order.status = 'FILLED';
+        order.filled_at = new Date();
+        filledCount += 1;
+      }
+      return { filledCount };
     },
 
     async getPortfolio(userId) {
