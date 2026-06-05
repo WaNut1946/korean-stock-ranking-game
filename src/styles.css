@@ -2403,6 +2403,15 @@ textarea {
     flex-direction: column;
   }
 
+  .order-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .order-heading .trade-guide-menu {
+    margin-left: auto;
+  }
+
   .search-box {
     width: 100%;
   }
