@@ -589,6 +589,36 @@ textarea {
   min-height: 36px;
 }
 
+.trade-status-card {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #d8e6de;
+  border-radius: 6px;
+  background: #f0fdf4;
+  padding: 9px 10px;
+}
+
+.trade-status-card strong {
+  color: #067647;
+  font-size: 14px;
+}
+
+.trade-status-card span,
+.trade-status-card small {
+  color: #475467;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.trade-status-card.closed {
+  border-color: #ead7a7;
+  background: #fffbeb;
+}
+
+.trade-status-card.closed strong {
+  color: #92400e;
+}
+
 .order-metrics {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -643,6 +673,14 @@ textarea {
 .order-buttons button {
   min-height: 44px;
   font-weight: 900;
+}
+
+.trade-notice {
+  margin: 0;
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .buy-button {

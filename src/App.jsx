@@ -922,6 +922,19 @@ function Dashboard({ logout }) {
   const estimatedCost = selectedPrice * currentQuantity;
   const maxBuyQuantity = selectedPrice > 0 ? Math.floor(portfolio.summary.cashBalance / selectedPrice) : 0;
   const maxSellQuantity = selectedHolding?.quantity || 0;
+  const rawQuantity = Number(quantity);
+  const invalidQuantity = !Number.isInteger(rawQuantity) || rawQuantity <= 0;
+  const buyDisabled = !marketOpen || invalidQuantity || currentQuantity > maxBuyQuantity;
+  const sellDisabled = !marketOpen || invalidQuantity || !selectedHolding || currentQuantity > maxSellQuantity;
+  const tradeNotice = !marketOpen
+    ? '현재는 조회 전용 시간입니다. 매수/매도는 평일 09:00~15:30에 가능합니다.'
+    : invalidQuantity
+      ? '수량은 1주 이상 정수로 입력해 주세요.'
+      : currentQuantity > maxBuyQuantity
+        ? `현재 현금으로는 ${maxBuyQuantity.toLocaleString('ko-KR')}주까지 매수할 수 있습니다.`
+        : selectedHolding && currentQuantity > maxSellQuantity
+          ? `보유 수량은 ${maxSellQuantity.toLocaleString('ko-KR')}주입니다.`
+          : '';
   const setPresetQuantity = (value) => setQuantity(Math.max(1, Number(value || 1)));
   const addQuantity = (amount) => setPresetQuantity(Number(quantity || 0) + amount);
   const closeWelcomeGuide = () => {
@@ -1068,6 +1081,11 @@ function Dashboard({ logout }) {
           <div className="panel-heading compact">
             <h2>지금 거래</h2>
           </div>
+          <div className={`trade-status-card ${marketOpen ? 'open' : 'closed'}`}>
+            <strong>{marketOpen ? '거래 가능' : '조회 전용'}</strong>
+            <span>{marketOpen ? '현재 매수와 매도가 가능합니다.' : '매수/매도는 평일 09:00~15:30에 가능합니다.'}</span>
+            <small>시세는 평일 09:00~15:45 중 약 15분 간격으로 갱신됩니다.</small>
+          </div>
           <label>
             종목
             <input value={selectedStock ? `${selectedStock.name} (${selectedStock.code})` : ''} readOnly />
@@ -1107,21 +1125,15 @@ function Dashboard({ logout }) {
             <strong>{maxSellQuantity.toLocaleString('ko-KR')}주</strong>
           </div>
 
-          {currentQuantity > maxBuyQuantity && (
-            <p className="inline-warning">현재 현금으로는 {maxBuyQuantity.toLocaleString('ko-KR')}주까지 매수할 수 있습니다.</p>
-          )}
-          {selectedHolding && currentQuantity > maxSellQuantity && (
-            <p className="inline-warning">보유 수량은 {maxSellQuantity.toLocaleString('ko-KR')}주입니다.</p>
-          )}
-
           <div className="order-buttons">
-            <button className="buy-button" disabled={!marketOpen} onClick={() => openOrder('buy')}>
+            <button className="buy-button" disabled={buyDisabled} onClick={() => openOrder('buy')}>
               {quantity || 1}주 매수
             </button>
-            <button className="sell-button" disabled={!marketOpen || !selectedHolding} onClick={() => openOrder('sell')}>
+            <button className="sell-button" disabled={sellDisabled} onClick={() => openOrder('sell')}>
               {quantity || 1}주 매도
             </button>
           </div>
+          {tradeNotice && <p className="trade-notice">{tradeNotice}</p>}
         </aside>
       </section>
 
