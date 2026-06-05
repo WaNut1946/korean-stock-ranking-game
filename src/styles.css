@@ -734,6 +734,7 @@ textarea {
   display: flex;
   justify-content: center;
   gap: 8px;
+  padding: 12px 0 4px;
 }
 
 .period-tabs button {
