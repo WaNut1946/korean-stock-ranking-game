@@ -760,6 +760,8 @@ function Dashboard({ logout }) {
   const [myRanking, setMyRanking] = useState(null);
   const [rankingSort, setRankingSort] = useState('asset');
   const [trades, setTrades] = useState([]);
+  const [tradeFilter, setTradeFilter] = useState('ALL');
+  const [tradeQuery, setTradeQuery] = useState('');
   const [assetHistory, setAssetHistory] = useState([]);
   const [query, setQuery] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -805,6 +807,18 @@ function Dashboard({ logout }) {
         stock.sector.toLowerCase().includes(keyword),
     );
   }, [query, stocks]);
+
+  const filteredTrades = useMemo(() => {
+    const keyword = tradeQuery.trim().toLowerCase();
+    return trades.filter((trade) => {
+      const matchesType = tradeFilter === 'ALL' || trade.type === tradeFilter;
+      const matchesKeyword =
+        !keyword ||
+        trade.stockName.toLowerCase().includes(keyword) ||
+        trade.stockCode.toLowerCase().includes(keyword);
+      return matchesType && matchesKeyword;
+    });
+  }, [trades, tradeFilter, tradeQuery]);
 
   const load = async () => {
     const [portfolioResponse, stocksResponse, rankingResponse] = await Promise.all([
@@ -1308,6 +1322,35 @@ function Dashboard({ logout }) {
       <section className="panel">
         <div className="panel-heading">
           <h2>거래 내역</h2>
+          <span className="muted">
+            {filteredTrades.length.toLocaleString('ko-KR')} / {trades.length.toLocaleString('ko-KR')}건
+          </span>
+        </div>
+        <div className="trade-history-tools">
+          <div className="segmented-tabs" role="tablist" aria-label="거래 구분 필터">
+            {[
+              { key: 'ALL', label: '전체' },
+              { key: 'BUY', label: '매수' },
+              { key: 'SELL', label: '매도' },
+            ].map((item) => (
+              <button
+                className={tradeFilter === item.key ? 'active' : ''}
+                key={item.key}
+                onClick={() => setTradeFilter(item.key)}
+                type="button"
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="search-box compact">
+            <Search size={16} />
+            <input
+              placeholder="종목명 또는 코드"
+              value={tradeQuery}
+              onChange={(event) => setTradeQuery(event.target.value)}
+            />
+          </div>
         </div>
         <div className="table trades-table">
           <div className="row head">
@@ -1318,7 +1361,7 @@ function Dashboard({ logout }) {
             <span>가격</span>
             <span>금액</span>
           </div>
-          {trades.map((trade) => (
+          {filteredTrades.map((trade) => (
             <div className="row" key={trade.id}>
               <span>{formatDateTime(trade.createdAt)}</span>
               <span className={trade.type === 'BUY' ? 'trade-buy' : 'trade-sell'}>
@@ -1334,6 +1377,7 @@ function Dashboard({ logout }) {
             </div>
           ))}
           {trades.length === 0 && <p className="empty">거래 내역이 없습니다.</p>}
+          {trades.length > 0 && filteredTrades.length === 0 && <p className="empty">조건에 맞는 거래 내역이 없습니다.</p>}
         </div>
       </section>
 
