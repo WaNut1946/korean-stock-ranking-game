@@ -735,6 +735,22 @@ function AccountDeleteModal({ open, onCancel, onConfirm, loading, error }) {
   );
 }
 
+function Toast({ toast, onClose }) {
+  if (!toast) return null;
+
+  return (
+    <div className={`toast ${toast.type || 'info'}`} role="status" aria-live="polite">
+      <div>
+        <strong>{toast.title}</strong>
+        <span>{toast.message}</span>
+      </div>
+      <button className="notice-close" onClick={onClose} title="알림 닫기">
+        <X size={17} />
+      </button>
+    </div>
+  );
+}
+
 function Dashboard({ logout }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -750,7 +766,7 @@ function Dashboard({ logout }) {
   const [selectedCode, setSelectedCode] = useState('');
   const [period, setPeriod] = useState('15M');
   const [priceHistory, setPriceHistory] = useState([]);
-  const [message, setMessage] = useState('');
+  const [toast, setToast] = useState(null);
   const [loadError, setLoadError] = useState('');
   const [pendingOrder, setPendingOrder] = useState(null);
   const [tradeLoading, setTradeLoading] = useState(false);
@@ -872,21 +888,36 @@ function Dashboard({ logout }) {
     setSkipAnnouncementToday(false);
   };
 
+  const showToast = ({ type = 'info', title, message: toastMessage }) => {
+    setToast({
+      id: Date.now(),
+      type,
+      title,
+      message: toastMessage,
+    });
+  };
+
+  useEffect(() => {
+    if (!toast) return undefined;
+
+    const timer = window.setTimeout(() => setToast(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
   const openOrder = (type) => {
     if (!selectedStock) return;
     const orderQuantity = Number(quantity || 1);
 
     if (!Number.isInteger(orderQuantity) || orderQuantity <= 0) {
-      setMessage('수량은 1 이상의 정수여야 합니다.');
+      showToast({ type: 'error', title: '수량 확인', message: '수량은 1 이상의 정수여야 합니다.' });
       return;
     }
 
     if (type === 'sell' && (!selectedHolding || orderQuantity > selectedHolding.quantity)) {
-      setMessage('선택한 종목의 보유 수량이 부족합니다.');
+      showToast({ type: 'error', title: '매도 불가', message: '선택한 종목의 보유 수량이 부족합니다.' });
       return;
     }
 
-    setMessage('');
     setPendingOrder({
       type,
       stockCode: selectedStock.code,
@@ -901,7 +932,6 @@ function Dashboard({ logout }) {
     if (!pendingOrder) return;
 
     setTradeLoading(true);
-    setMessage('');
 
     try {
       const { data } = await api.post(`/trade/${pendingOrder.type}`, {
@@ -919,9 +949,17 @@ function Dashboard({ logout }) {
       setTrades(tradesResponse.data.trades);
       setAssetHistory(assetHistoryResponse.data.history);
       setPendingOrder(null);
-      setMessage(pendingOrder.type === 'buy' ? '매수가 완료되었습니다.' : '매도가 완료되었습니다.');
+      showToast({
+        type: pendingOrder.type === 'buy' ? 'buy' : 'sell',
+        title: pendingOrder.type === 'buy' ? '매수 완료' : '매도 완료',
+        message: `${pendingOrder.stockName} ${pendingOrder.quantity.toLocaleString('ko-KR')}주 거래가 완료되었습니다.`,
+      });
     } catch (error) {
-      setMessage(error.response?.data?.message || '거래를 처리하지 못했습니다.');
+      showToast({
+        type: 'error',
+        title: '거래 실패',
+        message: error.response?.data?.message || '거래를 처리하지 못했습니다.',
+      });
     } finally {
       setTradeLoading(false);
     }
@@ -1094,15 +1132,6 @@ function Dashboard({ logout }) {
             </p>
           </div>
           <button className="notice-close" onClick={closeWelcomeGuide} title="안내 닫기">
-            <X size={17} />
-          </button>
-        </div>
-      )}
-
-      {message && (
-        <div className="notice dismissible-notice">
-          <span>{message}</span>
-          <button className="notice-close" onClick={() => setMessage('')} title="알림 닫기">
             <X size={17} />
           </button>
         </div>
@@ -1339,6 +1368,7 @@ function Dashboard({ logout }) {
         loading={deleteLoading}
         error={deleteError}
       />
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </main>
   );
 }
