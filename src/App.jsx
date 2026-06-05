@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowDownUp,
@@ -304,6 +304,7 @@ function SummaryTile({ icon, label, value, tone }) {
 
 function StockChart({ stock, period, setPeriod, history }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const chartSvgRef = useRef(null);
   const chartPoints = useMemo(() => {
     const historyPoints = history
       .map((item) => ({
@@ -329,6 +330,16 @@ function StockChart({ stock, period, setPeriod, history }) {
   }) : [];
   const points = plottedPoints.map((item) => `${item.x},${item.y}`).join(' ');
   const fillPoints = `24,184 ${points} 576,184`;
+  const updateHoveredPoint = (event) => {
+    if (!hasEnoughHistory || plottedPoints.length === 0 || !chartSvgRef.current) return;
+
+    const rect = chartSvgRef.current.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 600;
+    const nearestPoint = plottedPoints.reduce((nearest, point) =>
+      Math.abs(point.x - x) < Math.abs(nearest.x - x) ? point : nearest,
+    );
+    setHoveredPoint(nearestPoint);
+  };
 
   if (!stock) {
     return <section className="panel chart-main">종목을 선택해 주세요.</section>;
@@ -350,7 +361,15 @@ function StockChart({ stock, period, setPeriod, history }) {
       </div>
 
       <div className="chart-canvas">
-        <svg className="stock-chart" viewBox="0 0 600 210" role="img" aria-label={`${stock.name} 가격 차트`}>
+        <svg
+          className="stock-chart"
+          viewBox="0 0 600 210"
+          role="img"
+          aria-label={`${stock.name} 가격 차트`}
+          ref={chartSvgRef}
+          onMouseMove={updateHoveredPoint}
+          onMouseLeave={() => setHoveredPoint(null)}
+        >
           <defs>
             <linearGradient id="stockFill" x1="0" x2="0" y1="0" y2="1">
               <stop offset="0%" stopColor="#1f6f8b" stopOpacity="0.24" />
@@ -366,18 +385,29 @@ function StockChart({ stock, period, setPeriod, history }) {
           )}
           {hasEnoughHistory && <polygon points={fillPoints} fill="url(#stockFill)" />}
           {hasEnoughHistory && <polyline className="chart-line" points={points} />}
+          {hoveredPoint && (
+            <line className="chart-crosshair" x1={hoveredPoint.x} x2={hoveredPoint.x} y1="42" y2="184" />
+          )}
           {plottedPoints.map((point) => (
             <circle
-              className="chart-dot interactive"
+              className="chart-dot"
               key={`${point.recordedAt}-${point.price}`}
               cx={point.x}
               cy={point.y}
               r="5"
+            />
+          ))}
+          {plottedPoints.map((point) => (
+            <circle
+              className="chart-hit-area"
+              key={`${point.recordedAt}-${point.price}-hit`}
+              cx={point.x}
+              cy={point.y}
+              r="18"
               tabIndex="0"
               onBlur={() => setHoveredPoint(null)}
               onFocus={() => setHoveredPoint(point)}
               onMouseEnter={() => setHoveredPoint(point)}
-              onMouseLeave={() => setHoveredPoint(null)}
             />
           ))}
         </svg>

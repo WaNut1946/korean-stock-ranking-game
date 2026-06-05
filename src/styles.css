@@ -274,8 +274,8 @@ textarea {
 
 .chart-grid {
   fill: none;
-  stroke: #edf1f5;
-  stroke-width: 1;
+  stroke: #c8d9e1;
+  stroke-width: 1.2;
 }
 
 .chart-line {
@@ -304,16 +304,23 @@ textarea {
   opacity: 0.8;
 }
 
-.chart-dot.interactive {
+.chart-hit-area {
+  fill: transparent;
   cursor: pointer;
   outline: none;
+  pointer-events: all;
 }
 
-.chart-dot.interactive:hover,
-.chart-dot.interactive:focus {
-  fill: #1f6f8b;
-  stroke: #fff;
-  stroke-width: 4;
+.chart-hit-area:focus {
+  stroke: rgba(31, 111, 139, 0.28);
+  stroke-width: 2;
+}
+
+.chart-crosshair {
+  stroke: #174f67;
+  stroke-width: 2;
+  opacity: 0.72;
+  pointer-events: none;
 }
 
 .asset-history-panel {
@@ -501,7 +508,11 @@ textarea {
 
 .chart-canvas {
   position: relative;
+  border: 1px solid #e3edf2;
+  border-radius: 8px;
+  background: #f7fbfd;
   min-height: 280px;
+  overflow: hidden;
 }
 
 .chart-tooltip {
