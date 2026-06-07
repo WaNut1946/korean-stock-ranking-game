@@ -100,11 +100,11 @@ function normalizeAnnouncement(row) {
 }
 
 const historyLimits = {
-  '15M': { bucketSeconds: 15 * 60, limit: 24 },
-  '1H': { bucketSeconds: 60 * 60, limit: 24 },
-  '1D': { bucketSeconds: 24 * 60 * 60, limit: 24 },
-  '1W': { bucketSeconds: 7 * 24 * 60 * 60, limit: 24 },
-  '1M': { bucketSeconds: 30 * 24 * 60 * 60, limit: 24 },
+  '15M': { bucketExpression: 'FLOOR(UNIX_TIMESTAMP(recorded_at) / 900)', limit: 24 },
+  '1H': { bucketExpression: 'FLOOR(UNIX_TIMESTAMP(recorded_at) / 3600)', limit: 24 },
+  '1D': { bucketExpression: 'DATE(DATE_ADD(recorded_at, INTERVAL 9 HOUR))', limit: 24 },
+  '1W': { bucketExpression: 'YEARWEEK(DATE_ADD(recorded_at, INTERVAL 9 HOUR), 3)', limit: 24 },
+  '1M': { bucketExpression: "DATE_FORMAT(DATE_ADD(recorded_at, INTERVAL 9 HOUR), '%Y-%m')", limit: 24 },
 };
 
 async function addBoughtHolding(connection, { userId, stock, quantity, price, totalAmount }) {
@@ -345,20 +345,37 @@ export function createMysqlStore(pool) {
       const [rows] = await pool.execute(
         `SELECT stock_code, stock_name, sector, price, recorded_at
          FROM (
-           SELECT
-             stock_code,
-             stock_name,
-             sector,
-             AVG(price) AS price,
-             MIN(recorded_at) AS recorded_at
-           FROM stock_price_history
-           WHERE stock_code = ?
-           GROUP BY stock_code, stock_name, sector, UNIX_TIMESTAMP(recorded_at) DIV ?
+           SELECT stock_code, stock_name, sector, price, recorded_at
+           FROM (
+             SELECT
+               stock_code,
+               stock_name,
+               sector,
+               price,
+               recorded_at,
+               ROW_NUMBER() OVER (
+                 PARTITION BY bucket_key
+                 ORDER BY recorded_at DESC, id DESC
+               ) AS row_rank
+             FROM (
+               SELECT
+                 id,
+                 stock_code,
+                 stock_name,
+                 sector,
+                 price,
+                 recorded_at,
+                 ${config.bucketExpression} AS bucket_key
+               FROM stock_price_history
+               WHERE stock_code = ?
+             ) AS bucketed_history
+           ) AS ranked_history
+           WHERE row_rank = 1
            ORDER BY recorded_at DESC
            LIMIT ${config.limit}
          ) AS compressed_history
          ORDER BY recorded_at ASC`,
-        [code, config.bucketSeconds],
+        [code],
       );
       return rows.map(normalizePriceHistory);
     },
