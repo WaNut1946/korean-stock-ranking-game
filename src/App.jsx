@@ -647,7 +647,7 @@ function OrderConfirmModal({ order, cashBalance, onCancel, onConfirm, loading })
 
   return (
     <div className="modal-backdrop" role="presentation">
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="order-title">
+      <section className="modal order-confirm-modal" role="dialog" aria-modal="true" aria-labelledby="order-title">
         <div className="modal-header">
           <div>
             <p className="eyebrow">주문 확인</p>
